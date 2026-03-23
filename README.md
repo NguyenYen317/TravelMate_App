@@ -136,7 +136,7 @@ lib/
 
 ⚙️ Setup Instructions
 1. Clone project
-git clone https://github.com/your-username/travelmate.git
+git clone https://github.com/NguyenYen317/TRAVELMATE_APP.git
 cd travelmate
 
 3. Install dependencies
