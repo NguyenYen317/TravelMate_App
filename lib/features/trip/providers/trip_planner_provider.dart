@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../sync/sync_service.dart';
 import '../models/trip_models.dart';
 
 class TripPlannerProvider extends ChangeNotifier {
@@ -10,6 +11,7 @@ class TripPlannerProvider extends ChangeNotifier {
 
   static const String _boxName = 'trip_planner_box';
   static const String _tripKeyPrefix = 'trips';
+  static const String _tripUpdatedAtKeyPrefix = 'trips_updated_at';
 
   final List<Trip> _trips = [];
   DateTime _selectedDate = DateTime.now();
@@ -58,6 +60,46 @@ class TripPlannerProvider extends ChangeNotifier {
     final rawTrips =
         box.get(storageKey, defaultValue: <dynamic>[]) as List<dynamic>;
 
+    var localTrips = rawTrips
+        .map((item) => Trip.fromMap(item as Map<dynamic, dynamic>))
+        .toList();
+
+    if (userId != null) {
+      final cloudPayload = await SyncService.instance.loadTrips(userId: userId);
+      if (requestVersion != _reloadVersion || _currentUserId != userId) {
+        return;
+      }
+
+      if (cloudPayload != null) {
+        final cloudTrips = cloudPayload.items
+            .map((item) => Trip.fromMap(item))
+            .toList();
+        final cloudHasData = cloudTrips.isNotEmpty;
+        final localHasData = localTrips.isNotEmpty;
+
+        if (!localHasData && cloudHasData) {
+          localTrips = cloudTrips;
+          await _saveLocalOnly(_tripsToRaw(localTrips));
+        } else if (localHasData && !cloudHasData) {
+          await SyncService.instance.saveTrips(
+            userId: userId,
+            trips: _tripsToRaw(localTrips),
+          );
+        } else if (localHasData && cloudHasData) {
+          final localUpdatedAt = _readLocalUpdatedAt(box, storageKey);
+          if (cloudPayload.updatedAtMs >= localUpdatedAt) {
+            localTrips = cloudTrips;
+            await _saveLocalOnly(_tripsToRaw(localTrips));
+          } else {
+            await SyncService.instance.saveTrips(
+              userId: userId,
+              trips: _tripsToRaw(localTrips),
+            );
+          }
+        }
+      }
+    }
+
     // Ignore stale async loads when user switches account quickly.
     if (requestVersion != _reloadVersion || _currentUserId != userId) {
       return;
@@ -65,11 +107,7 @@ class TripPlannerProvider extends ChangeNotifier {
 
     _trips
       ..clear()
-      ..addAll(
-        rawTrips
-            .map((item) => Trip.fromMap(item as Map<dynamic, dynamic>))
-            .toList(),
-      );
+      ..addAll(localTrips);
 
     _activeTripId = null;
     _selectedDate = DateTime.now();
@@ -92,8 +130,35 @@ class TripPlannerProvider extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
+    final rawTrips = _tripsToRaw(_trips);
+    await _saveLocalOnly(rawTrips);
+
+    final userId = _currentUserId;
+    if (userId != null) {
+      await SyncService.instance.saveTrips(userId: userId, trips: rawTrips);
+    }
+  }
+
+  List<Map<String, dynamic>> _tripsToRaw(List<Trip> trips) {
+    return trips.map((trip) => trip.toMap()).toList();
+  }
+
+  String _buildTripUpdatedAtKey(String storageKey) {
+    return '$_tripUpdatedAtKeyPrefix::$storageKey';
+  }
+
+  int _readLocalUpdatedAt(Box<dynamic> box, String storageKey) {
+    final raw = box.get(_buildTripUpdatedAtKey(storageKey), defaultValue: 0);
+    return raw is int ? raw : 0;
+  }
+
+  Future<void> _saveLocalOnly(List<Map<String, dynamic>> rawTrips) async {
     final box = await Hive.openBox<dynamic>(_boxName);
-    await box.put(_tripKey, _trips.map((trip) => trip.toMap()).toList());
+    await box.put(_tripKey, rawTrips);
+    await box.put(
+      _buildTripUpdatedAtKey(_tripKey),
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   Future<void> createTrip({
