@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/screens/auth_gate_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
+import '../features/expense/screens/expense_screen.dart';
 import '../features/home/screens/main_screen.dart';
 
 class AppRoutes {
@@ -10,6 +11,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String expense = '/expense';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -31,6 +33,11 @@ class AppRoutes {
       case home:
         return MaterialPageRoute<void>(
           builder: (_) => const MainScreen(),
+          settings: settings,
+        );
+      case expense:
+        return MaterialPageRoute<void>(
+          builder: (_) => ExpenseScreen(tripId: settings.arguments as String?),
           settings: settings,
         );
       default:
