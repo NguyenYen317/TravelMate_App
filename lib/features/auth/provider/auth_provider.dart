@@ -30,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
 
     return 'Bạn';
   }
+
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _currentUser != null;
 
