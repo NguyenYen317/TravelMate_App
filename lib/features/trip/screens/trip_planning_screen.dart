@@ -471,6 +471,13 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                             tooltip: 'Xoá địa điểm',
                             icon: const Icon(Icons.delete_outline),
                             onPressed: () async {
+                              final shouldDelete = await _confirmDeleteLocation(
+                                context,
+                                location.name,
+                              );
+                              if (shouldDelete != true) {
+                                return;
+                              }
                               await provider.removeLocation(
                                 tripId: trip.id,
                                 locationId: location.id,
@@ -511,6 +518,28 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     final hour = (minuteOfDay ~/ 60).toString().padLeft(2, '0');
     final minute = (minuteOfDay % 60).toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  Future<bool?> _confirmDeleteLocation(BuildContext context, String name) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Xoá địa điểm'),
+          content: Text('Bạn có chắc muốn xoá địa điểm "$name" không?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Huỷ'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Xoá'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _showEditTripDialog(
