@@ -9,12 +9,14 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   static const String _boxName = 'expense_box';
-  static const String _expenseKey = 'expenses';
+  static const String _expenseKeyPrefix = 'expenses';
 
   final List<ExpenseItem> _allExpenses = [];
   bool _isReady = false;
+  String? _currentUserId;
   DateTime? _filterDate;
   String _filterType = 'All';
+  int _reloadVersion = 0;
 
   static const List<String> types = [
     'All',
@@ -30,10 +32,34 @@ class ExpenseProvider extends ChangeNotifier {
   DateTime? get filterDate => _filterDate;
   String get filterType => _filterType;
 
+  void setUserId(String? userId) {
+    if (_currentUserId == userId) {
+      return;
+    }
+    _currentUserId = userId;
+    _reloadForUser(userId);
+  }
+
   Future<void> _init() async {
+    await _reloadForUser(_currentUserId);
+  }
+
+  Future<void> _reloadForUser(String? userId) async {
+    final requestVersion = ++_reloadVersion;
+    final storageKey = _buildExpenseKey(userId);
+
+    _isReady = false;
+    notifyListeners();
+
     final box = await Hive.openBox<dynamic>(_boxName);
     final rawExpenses =
-        box.get(_expenseKey, defaultValue: <dynamic>[]) as List<dynamic>;
+        box.get(storageKey, defaultValue: <dynamic>[]) as List<dynamic>;
+
+    // Ignore stale async loads when user switches account quickly.
+    if (requestVersion != _reloadVersion || _currentUserId != userId) {
+      return;
+    }
+
     _allExpenses
       ..clear()
       ..addAll(
@@ -41,8 +67,20 @@ class ExpenseProvider extends ChangeNotifier {
             .map((item) => ExpenseItem.fromMap(item as Map<dynamic, dynamic>))
             .toList(),
       );
+
+    _filterDate = null;
+    _filterType = 'All';
     _isReady = true;
     notifyListeners();
+  }
+
+  String get _expenseKey {
+    return _buildExpenseKey(_currentUserId);
+  }
+
+  String _buildExpenseKey(String? userId) {
+    final userKey = userId ?? 'guest';
+    return '$_expenseKeyPrefix::$userKey';
   }
 
   Future<void> _persist() async {

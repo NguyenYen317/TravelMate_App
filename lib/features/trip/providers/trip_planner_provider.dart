@@ -9,17 +9,27 @@ class TripPlannerProvider extends ChangeNotifier {
   }
 
   static const String _boxName = 'trip_planner_box';
-  static const String _tripKey = 'trips';
+  static const String _tripKeyPrefix = 'trips';
 
   final List<Trip> _trips = [];
   DateTime _selectedDate = DateTime.now();
   String? _activeTripId;
+  String? _currentUserId;
   bool _isReady = false;
+  int _reloadVersion = 0;
 
   List<Trip> get trips => List.unmodifiable(_trips);
   bool get isReady => _isReady;
   DateTime get selectedDate => _selectedDate;
   String? get activeTripId => _activeTripId;
+
+  void setUserId(String? userId) {
+    if (_currentUserId == userId) {
+      return;
+    }
+    _currentUserId = userId;
+    _reloadForUser(userId);
+  }
 
   Trip? get activeTrip {
     if (_activeTripId == null) {
@@ -34,9 +44,24 @@ class TripPlannerProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    await _reloadForUser(_currentUserId);
+  }
+
+  Future<void> _reloadForUser(String? userId) async {
+    final requestVersion = ++_reloadVersion;
+    final storageKey = _buildTripKey(userId);
+
+    _isReady = false;
+    notifyListeners();
+
     final box = await Hive.openBox<dynamic>(_boxName);
     final rawTrips =
-        box.get(_tripKey, defaultValue: <dynamic>[]) as List<dynamic>;
+        box.get(storageKey, defaultValue: <dynamic>[]) as List<dynamic>;
+
+    // Ignore stale async loads when user switches account quickly.
+    if (requestVersion != _reloadVersion || _currentUserId != userId) {
+      return;
+    }
 
     _trips
       ..clear()
@@ -46,6 +71,8 @@ class TripPlannerProvider extends ChangeNotifier {
             .toList(),
       );
 
+    _activeTripId = null;
+    _selectedDate = DateTime.now();
     if (_trips.isNotEmpty) {
       _activeTripId = _trips.first.id;
       _selectedDate = _trips.first.startDate;
@@ -53,6 +80,15 @@ class TripPlannerProvider extends ChangeNotifier {
 
     _isReady = true;
     notifyListeners();
+  }
+
+  String get _tripKey {
+    return _buildTripKey(_currentUserId);
+  }
+
+  String _buildTripKey(String? userId) {
+    final userKey = userId ?? 'guest';
+    return '$_tripKeyPrefix::$userKey';
   }
 
   Future<void> _persist() async {

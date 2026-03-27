@@ -12,6 +12,24 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   AuthUser? get currentUser => _currentUser;
+  String get displayName {
+    final user = _currentUser;
+    if (user == null) return 'Bạn';
+
+    final name = user.name.trim();
+    if (name.isNotEmpty && name.toLowerCase() != 'google user') {
+      return name;
+    }
+
+    if (user.provider == AuthProviderType.google) {
+      final emailPrefix = user.email?.split('@').first.trim();
+      if (emailPrefix != null && emailPrefix.isNotEmpty) {
+        return emailPrefix;
+      }
+    }
+
+    return 'Bạn';
+  }
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _currentUser != null;
 

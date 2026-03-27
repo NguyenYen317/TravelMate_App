@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../routes/app_routes.dart';
-import '../auth_service.dart';
+import '../provider/auth_provider.dart';
 
 class AuthGateScreen extends StatefulWidget {
   const AuthGateScreen({super.key});
@@ -20,7 +21,9 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
   }
 
   Future<void> _routeBySession() async {
-    final isLoggedIn = await AuthService.instance.isLoggedIn();
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.loadSession();
+    final isLoggedIn = authProvider.isLoggedIn;
     if (!mounted) return;
     final route = isLoggedIn ? AppRoutes.home : AppRoutes.login;
 

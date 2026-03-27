@@ -14,7 +14,7 @@ class ProfileScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final searchProvider = Provider.of<SearchProvider>(context);
     final favorites = searchProvider.favoritePlaces;
-    final userName = authProvider.currentUser?.name ?? 'Bạn';
+    final userName = authProvider.displayName;
 
     return Scaffold(
       appBar: AppBar(

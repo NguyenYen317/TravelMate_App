@@ -30,11 +30,21 @@ Future<void> main() async {
         ChangeNotifierProvider<AppProvider>(create: (_) => AppProvider()),
         ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
         ChangeNotifierProvider<SearchProvider>(create: (_) => SearchProvider()),
-        ChangeNotifierProvider<TripPlannerProvider>(
+        ChangeNotifierProxyProvider<AuthProvider, TripPlannerProvider>(
           create: (_) => TripPlannerProvider(),
+          update: (_, authProvider, tripProvider) {
+            final provider = tripProvider ?? TripPlannerProvider();
+            provider.setUserId(authProvider.currentUser?.id);
+            return provider;
+          },
         ),
-        ChangeNotifierProvider<ExpenseProvider>(
+        ChangeNotifierProxyProvider<AuthProvider, ExpenseProvider>(
           create: (_) => ExpenseProvider(),
+          update: (_, authProvider, expenseProvider) {
+            final provider = expenseProvider ?? ExpenseProvider();
+            provider.setUserId(authProvider.currentUser?.id);
+            return provider;
+          },
         ),
       ],
       child: const TravelMateApp(),

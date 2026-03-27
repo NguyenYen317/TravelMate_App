@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../routes/app_routes.dart';
 import '../auth_service.dart';
+import '../provider/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await AuthService.instance.loginLocal(
+      await context.read<AuthProvider>().loginLocal(
         username: _usernameController.text,
         password: _passwordController.text,
       );
@@ -52,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
     try {
-      await AuthService.instance.loginWithGoogle();
+      await context.read<AuthProvider>().loginWithGoogle();
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(AppRoutes.home);
     } on AuthException catch (e) {
