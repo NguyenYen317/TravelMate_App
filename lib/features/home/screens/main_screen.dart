@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'home_page.dart';
 import '../../search/screens/search_screen.dart';
+import '../../profile/screens/profile_screen.dart';
+import '../../../core/providers/app_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -10,36 +13,30 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
   final List<Widget> _pages = [
     const HomePage(),
-    const SearchScreen(), // Khám phá
+    const SearchScreen(),
     const Center(child: Text('Chuyến đi (Sắp có)')),
     const Center(child: Text('Cộng đồng (Sắp có)')),
-    const Center(child: Text('Cá nhân (Sắp có)')),
+    const ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final appProvider = Provider.of<AppProvider>(context);
 
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: appProvider.currentTabIndex, children: _pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
         ),
         child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
+          currentIndex: appProvider.currentTabIndex,
           onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
+            appProvider.setTab(index);
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.transparent,

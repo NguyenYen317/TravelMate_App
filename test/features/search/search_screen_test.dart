@@ -5,7 +5,7 @@ import 'package:travelmate_app/features/search/provider/search_provider.dart';
 import 'package:travelmate_app/features/search/screens/search_screen.dart';
 
 void main() {
-  Widget _buildSearchScreen() {
+  Widget buildSearchScreen() {
     return MaterialApp(
       home: ChangeNotifierProvider(
         create: (_) => SearchProvider(),
@@ -15,7 +15,7 @@ void main() {
   }
 
   testWidgets('SearchScreen renders core UI', (WidgetTester tester) async {
-    await tester.pumpWidget(_buildSearchScreen());
+    await tester.pumpWidget(buildSearchScreen());
 
     await tester.pump();
 
@@ -27,7 +27,7 @@ void main() {
   });
 
   testWidgets('SearchScreen supports typing and clear action', (WidgetTester tester) async {
-    await tester.pumpWidget(_buildSearchScreen());
+    await tester.pumpWidget(buildSearchScreen());
     await tester.pump();
 
     final textFieldFinder = find.byType(TextField);

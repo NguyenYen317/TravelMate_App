@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../search/screens/search_screen.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/app_provider.dart';
 
 class HomeSearchBar extends StatelessWidget {
   const HomeSearchBar({super.key});
@@ -7,6 +8,7 @@ class HomeSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
 
     return SliverToBoxAdapter(
       child: Padding(
@@ -18,10 +20,8 @@ class HomeSearchBar extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(30),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SearchScreen()),
-              );
+              // THAY ĐỔI CHÍNH: Thay vì push trang mới, chúng ta chuyển Tab ngay tại MainScreen
+              appProvider.setTab(1); // Chuyển sang Tab "Khám phá" (Index 1)
             },
             child: Ink(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

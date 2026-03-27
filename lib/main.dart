@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'features/auth/auth_service.dart';
+import 'features/auth/provider/auth_provider.dart';
 import 'features/search/provider/search_provider.dart';
+import 'core/providers/app_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,17 +15,17 @@ Future<void> main() async {
     await Firebase.initializeApp();
     AuthService.instance.setFirebaseAvailability(true);
   } catch (_) {
-    // Allow local auth flow even when Firebase is not configured yet.
     AuthService.instance.setFirebaseAvailability(false);
   }
 
   await AuthService.instance.init();
-  
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SearchProvider()),
-        // Bạn có thể thêm các Provider khác ở đây trong tương lai
+        ChangeNotifierProvider<AppProvider>(create: (_) => AppProvider()),
+        ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<SearchProvider>(create: (_) => SearchProvider()),
       ],
       child: const TravelMateApp(),
     ),

@@ -1,13 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../search_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../data/models/place.dart';
+import '../../../services/api_service.dart';
 
 class SearchProvider extends ChangeNotifier {
-  final SearchService _searchService = SearchService();
-  
-  List<PlacePrediction> _predictions = [];
-  List<PlacePrediction> get predictions => _predictions;
+  final ApiService _apiService = ApiService();
 
   List<Place> _searchResults = [];
   List<Place> get searchResults => _searchResults;
@@ -15,8 +14,8 @@ class SearchProvider extends ChangeNotifier {
   List<Place> _nearbyPlaces = [];
   List<Place> get nearbyPlaces => _nearbyPlaces;
 
-  List<String> _favoritePlaceIds = [];
-  List<String> get favoritePlaceIds => _favoritePlaceIds;
+  List<Place> _favoritePlaces = [];
+  List<Place> get favoritePlaces => _favoritePlaces;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -26,131 +25,159 @@ class SearchProvider extends ChangeNotifier {
     fetchNearbyPlaces();
   }
 
-  List<Place> _mergeUniquePlaces(List<List<Place>> groups) {
-    final Map<String, Place> unique = {};
+  // Chuẩn hoá chuỗi: chuyển về lowercase và loại bỏ dấu tiếng Việt
+  String _normalize(String input) {
+    if (input.isEmpty) return '';
+    final s = input.toLowerCase();
+    const from =
+        'áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ'
+        'ÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴĐ';
+    const to =
+        'aaaaaaaaaaaaaaaaaeeeeeeeeeeiiiiioooooooooooooooooouuuuuuuuuuuyyyyyd'
+        'AAAAAAAAAAAAAAAAAEEEEEEEEEEIIIIIOOOOOOOOOOOOOOOOOOUUUUUUUUUUUYYYYYD';
 
-    for (final group in groups) {
-      for (final place in group) {
-        final key = place.id.isNotEmpty
-            ? place.id
-            : '${place.name.toLowerCase()}_${place.address.toLowerCase()}';
-        unique[key] = place;
+    var output = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      final ch = s[i];
+      final idx = from.indexOf(ch);
+      if (idx != -1) {
+        output.write(to[idx]);
+      } else {
+        output.write(ch);
       }
     }
-
-    return unique.values.toList();
+    return output.toString();
   }
 
-  List<String> _buildCategoryQueries(String category, String keyword) {
-    final trimmedKeyword = keyword.trim();
-    if (trimmedKeyword.isEmpty) return [category];
-
-    return [
-      '$category ở $trimmedKeyword',
-      '$category tại $trimmedKeyword',
-    ];
-  }
-
+  // Tải địa điểm gần đây
   Future<void> fetchNearbyPlaces() async {
     _isLoading = true;
+    _nearbyPlaces = []; // Xóa dữ liệu cũ để hiện hiệu ứng loading
     notifyListeners();
+
     try {
-      _nearbyPlaces = await _searchService.searchPlacesByType('tourist_attraction');
+      Position position = await _determinePosition();
+      _nearbyPlaces = await _apiService.getNearbyPlaces(
+        position.latitude,
+        position.longitude,
+      );
     } catch (e) {
-      print("Lỗi tải địa điểm gần bạn: $e");
+      debugPrint("Nearby Places Error: $e");
+      // Fallback Hà Nội
+      _nearbyPlaces = await _apiService.getNearbyPlaces(21.0285, 105.8542);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> searchAutocomplete(String query) async {
+  // Tìm kiếm địa điểm
+  Future<void> search(String query) async {
     if (query.isEmpty) {
-      _predictions = [];
-      _searchResults = []; // Xóa kết quả cũ khi xóa từ khóa
+      _searchResults = [];
       notifyListeners();
       return;
     }
+
     _isLoading = true;
     notifyListeners();
+
     try {
-      final restaurantQueries = _buildCategoryQueries('nhà hàng', query);
-      final hotelQueries = _buildCategoryQueries('khách sạn', query);
-      final tourismQueries = _buildCategoryQueries('điểm du lịch', query);
-
-      final results = await Future.wait([
-        _searchService.getAutocomplete(query),
-        _searchService.searchPlacesByType(query),
-        _searchService.searchPlacesByType(restaurantQueries[0]),
-        _searchService.searchPlacesByType(restaurantQueries[1]),
-        _searchService.searchPlacesByType(hotelQueries[0]),
-        _searchService.searchPlacesByType(hotelQueries[1]),
-        _searchService.searchPlacesByType(tourismQueries[0]),
-        _searchService.searchPlacesByType(tourismQueries[1]),
-      ]);
-
-      _predictions = results[0] as List<PlacePrediction>;
-      _searchResults = _mergeUniquePlaces([
-        results[1] as List<Place>,
-        results[2] as List<Place>,
-        results[3] as List<Place>,
-        results[4] as List<Place>,
-        results[5] as List<Place>,
-        results[6] as List<Place>,
-        results[7] as List<Place>,
-      ]);
+      // Call API then filter locally using normalized (no-diacritic) comparison
+      final results = await _apiService.searchPlaces(query);
+      final q = _normalize(query.trim());
+      _searchResults = results.where((p) {
+        final name = _normalize(p.name);
+        final category = _normalize(p.category);
+        return name.contains(q) || category.contains(q);
+      }).toList();
     } catch (e) {
-      print(e);
+      debugPrint("Search API Error: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> filterPlaces(String type, {String? query}) async {
+  // Hàm hỗ trợ lọc từ Trang chủ
+  Future<void> filterByCategory(String category) async {
     _isLoading = true;
-    _predictions = []; // Ẩn gợi ý autocomplete
-    _searchResults = []; // XÓA KẾT QUẢ CŨ TRƯỚC KHI TẢI KẾT QUẢ BỘ LỌC MỚI
+    _searchResults = [];
     notifyListeners();
+
     try {
-      final queries = _buildCategoryQueries(type, query ?? '');
-      final resultGroups = await Future.wait(
-        queries.map((item) => _searchService.searchPlacesByType(item)),
+      Position position = await _determinePosition();
+      // Chuyển thể loại sang query hoặc gọi Overpass
+      final results = await _apiService.getNearbyPlaces(
+        position.latitude,
+        position.longitude,
       );
-      _searchResults = _mergeUniquePlaces(resultGroups);
+      if (category.isNotEmpty) {
+        final c = _normalize(category.trim());
+        _searchResults = results.where((p) {
+          return _normalize(p.category).contains(c) ||
+              _normalize(p.name).contains(c);
+        }).toList();
+      } else {
+        _searchResults = results;
+      }
     } catch (e) {
-      print(e);
+      // Fallback to API search if nearby call fails
+      _searchResults = await _apiService.searchPlaces(category);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<Place?> getDetails(String placeId) async {
-    try {
-      return await _searchService.getPlaceDetails(placeId);
-    } catch (e) {
-      print(e);
-      return null;
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return Future.error('GPS chưa bật');
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied)
+        return Future.error('Quyền vị trí bị từ chối');
     }
+    return await Geolocator.getCurrentPosition();
   }
 
   Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    _favoritePlaceIds = prefs.getStringList('favorite_places') ?? [];
-    notifyListeners();
-  }
-
-  Future<void> toggleFavorite(String placeId) async {
-    if (_favoritePlaceIds.contains(placeId)) {
-      _favoritePlaceIds.remove(placeId);
-    } else {
-      _favoritePlaceIds.add(placeId);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> favList =
+          prefs.getStringList('favorite_places_data') ?? [];
+      _favoritePlaces = favList
+          .map((item) => Place.fromMap(json.decode(item)))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Load favorites error: $e");
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('favorite_places', _favoritePlaceIds);
-    notifyListeners();
   }
 
-  bool isFavorite(String placeId) => _favoritePlaceIds.contains(placeId);
+  bool isFavorite(String placeId) {
+    return _favoritePlaces.any((p) => p.id == placeId);
+  }
+
+  Future<void> toggleFavorite(Place place) async {
+    final index = _favoritePlaces.indexWhere((p) => p.id == place.id);
+    if (index >= 0) {
+      _favoritePlaces.removeAt(index);
+    } else {
+      _favoritePlaces.add(place);
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> favData = _favoritePlaces
+          .map((e) => json.encode(e.toMap()))
+          .toList();
+      await prefs.setStringList('favorite_places_data', favData);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Save favorite error: $e");
+    }
+  }
 }
