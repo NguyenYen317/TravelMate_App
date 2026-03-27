@@ -6,10 +6,7 @@ import '../../map/screens/map_screen.dart';
 
 class PlaceDetailScreen extends StatelessWidget {
   final Place place;
-
   const PlaceDetailScreen({super.key, required this.place});
-
-  // Google Maps external launch removed per request
 
   @override
   Widget build(BuildContext context) {
@@ -17,42 +14,45 @@ class PlaceDetailScreen extends StatelessWidget {
     final isFav = searchProvider.isFavorite(place.id);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
+          // 1. Header with Image
           SliverAppBar(
-            expandedHeight: 300,
+            expandedHeight: 320,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                place.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 10)],
-                ),
-              ),
-              background: Hero(
-                tag: 'place-${place.id}',
-                child: place.imageUrl != null && place.imageUrl!.isNotEmpty
-                    ? Image.network(place.imageUrl!, fit: BoxFit.cover)
-                    : Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image, size: 100),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Hero(
+                    tag: 'place-${place.id}',
+                    child: _buildImage(place.imageUrl),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black26, Colors.transparent, Colors.black54],
                       ),
+                    ),
+                  ),
+                ],
               ),
             ),
             actions: [
-              CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.7),
-                child: IconButton(
-                  icon: Icon(
+              IconButton(
+                icon: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Icon(
                     isFav ? Icons.favorite : Icons.favorite_border,
-                    color: isFav ? Colors.red : Colors.black54,
+                    color: isFav ? Colors.red : Colors.grey,
                   ),
-                  onPressed: () => searchProvider.toggleFavorite(place),
                 ),
+                onPressed: () => searchProvider.toggleFavorite(place),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
             ],
           ),
 
@@ -62,62 +62,86 @@ class PlaceDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 2. Info Section (Category & Rating)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          place.category.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.blue, 
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 12
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                          Text(
+                            place.rating.toStringAsFixed(1), 
+                            style: const TextStyle(fontWeight: FontWeight.bold)
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Name
                   Text(
                     place.name,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
+                  
+                  // Address (Real location)
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 18),
                       const SizedBox(width: 4),
-                      Text(
-                        '${place.rating}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          place.address,
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildInfoCard(Icons.location_on, "Địa chỉ", place.address),
-                  _buildInfoCard(Icons.category, "Loại hình", place.category),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
 
-                  // NÚT CHỈ ĐƯỜNG TRÊN OSM (Trong App)
+                  // 3. Main Action Button (Directions only)
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MapScreen(place: place),
-                          ),
+                          context, 
+                          MaterialPageRoute(builder: (context) => MapScreen(place: place))
                         );
                       },
                       icon: const Icon(Icons.directions),
                       label: const Text(
-                        'CHỈ ĐƯỜNG (ỨNG DỤNG)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        "CHỈ ĐƯỜNG",
+                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
+                        backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
                       ),
                     ),
                   ),
-                  // External Google Maps button removed per request
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -127,37 +151,22 @@ class PlaceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String title, String subtitle) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue[600]),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        color: Colors.grey[200],
+        child: const Icon(Icons.image, color: Colors.grey, size: 50),
+      );
+    }
+    if (imageUrl.startsWith('assets/')) {
+      return Image.asset(imageUrl, fit: BoxFit.cover);
+    }
+    return Image.network(
+      imageUrl, 
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey[200],
+        child: const Icon(Icons.image, color: Colors.grey, size: 50),
       ),
     );
   }
