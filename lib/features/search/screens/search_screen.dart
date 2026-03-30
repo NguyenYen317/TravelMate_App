@@ -34,11 +34,16 @@ class _SearchScreenState extends State<SearchScreen> {
 
   String _getCategoryDisplayName(String? key) {
     switch (key) {
-      case 'restaurant': return 'Nhà hàng';
-      case 'hotel': return 'Khách sạn';
-      case 'cafe': return 'Cà phê';
-      case 'tourism': return 'Tham quan';
-      default: return '';
+      case 'restaurant':
+        return 'Nhà hàng';
+      case 'hotel':
+        return 'Khách sạn';
+      case 'cafe':
+        return 'Cà phê';
+      case 'tourism':
+        return 'Tham quan';
+      default:
+        return '';
     }
   }
 
@@ -55,7 +60,10 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Khám phá', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Khám phá',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -81,16 +89,25 @@ class _SearchScreenState extends State<SearchScreen> {
                 onChanged: _onSearchChanged,
                 decoration: InputDecoration(
                   hintText: 'Bạn muốn đi đâu? (Đà Nẵng, Phú Quốc...)',
-                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.blueAccent),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Colors.blueAccent,
+                  ),
                   suffixIcon: ValueListenableBuilder<bool>(
                     valueListenable: _showClearButton,
                     builder: (context, show, child) {
                       return show
                           ? IconButton(
-                              icon: const Icon(Icons.cancel_rounded, color: Colors.grey),
+                              icon: const Icon(
+                                Icons.cancel_rounded,
+                                color: Colors.grey,
+                              ),
                               onPressed: () {
                                 _searchController.clear();
-                                Provider.of<SearchProvider>(context, listen: false).search('');
+                                Provider.of<SearchProvider>(
+                                  context,
+                                  listen: false,
+                                ).search('');
                               },
                             )
                           : const SizedBox.shrink();
@@ -118,13 +135,33 @@ class _SearchScreenState extends State<SearchScreen> {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      _buildFilterChip('Nhà hàng', 'restaurant', Icons.restaurant_rounded, provider),
+                      _buildFilterChip(
+                        'Nhà hàng',
+                        'restaurant',
+                        Icons.restaurant_rounded,
+                        provider,
+                      ),
                       const SizedBox(width: 10),
-                      _buildFilterChip('Khách sạn', 'hotel', Icons.hotel_rounded, provider),
+                      _buildFilterChip(
+                        'Khách sạn',
+                        'hotel',
+                        Icons.hotel_rounded,
+                        provider,
+                      ),
                       const SizedBox(width: 10),
-                      _buildFilterChip('Cà phê', 'cafe', Icons.local_cafe_rounded, provider),
+                      _buildFilterChip(
+                        'Cà phê',
+                        'cafe',
+                        Icons.local_cafe_rounded,
+                        provider,
+                      ),
                       const SizedBox(width: 10),
-                      _buildFilterChip('Tham quan', 'tourism', Icons.explore_rounded, provider),
+                      _buildFilterChip(
+                        'Tham quan',
+                        'tourism',
+                        Icons.explore_rounded,
+                        provider,
+                      ),
                     ],
                   ),
                 ),
@@ -138,14 +175,17 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Consumer<SearchProvider>(
               builder: (context, provider, child) {
                 if (provider.isLoading) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                  return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
                 }
-                
+
                 if (provider.searchResults.isNotEmpty) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (provider.activeCategory != null && provider.currentQuery.isNotEmpty)
+                      if (provider.activeCategory != null &&
+                          provider.currentQuery.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                           child: Text(
@@ -171,7 +211,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   );
                 }
-                
+
                 if (provider.hasSearched) return _buildEmptyState();
                 return _buildExplorePlaceholder();
               },
@@ -182,7 +222,11 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildPlaceCard(BuildContext context, dynamic place, SearchProvider provider) {
+  Widget _buildPlaceCard(
+    BuildContext context,
+    dynamic place,
+    SearchProvider provider,
+  ) {
     // Logic hiển thị Tag linh hoạt
     String tagText = '';
     if (provider.activeCategory != null) {
@@ -201,7 +245,9 @@ class _SearchScreenState extends State<SearchScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => PlaceDetailScreen(place: place)),
+          MaterialPageRoute(
+            builder: (context) => PlaceDetailScreen(place: place),
+          ),
         );
       },
       child: Container(
@@ -230,7 +276,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: _buildImage(place.imageUrl),
               ),
             ),
-            
+
             // Thông tin
             Expanded(
               child: Padding(
@@ -242,23 +288,37 @@ class _SearchScreenState extends State<SearchScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.blue.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             tagText.toUpperCase(),
-                            style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Colors.amber,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               place.rating.toStringAsFixed(1),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ),
@@ -267,19 +327,29 @@ class _SearchScreenState extends State<SearchScreen> {
                     const SizedBox(height: 8),
                     Text(
                       place.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.grey,
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             place.address,
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -299,29 +369,55 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildImage(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
       return Container(
-        width: 120, height: 120, color: Colors.grey[100],
-        child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+        width: 120,
+        height: 120,
+        color: Colors.grey[100],
+        child: const Icon(
+          Icons.image_not_supported_outlined,
+          color: Colors.grey,
+        ),
       );
     }
     if (imageUrl.startsWith('assets/')) {
       return Image.asset(
-        imageUrl, width: 120, height: 120, fit: BoxFit.cover,
+        imageUrl,
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
-          width: 120, height: 120, color: Colors.grey[100],
-          child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+          width: 120,
+          height: 120,
+          color: Colors.grey[100],
+          child: const Icon(
+            Icons.image_not_supported_outlined,
+            color: Colors.grey,
+          ),
         ),
       );
     }
     return Image.network(
-      imageUrl, width: 120, height: 120, fit: BoxFit.cover,
+      imageUrl,
+      width: 120,
+      height: 120,
+      fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Container(
-        width: 120, height: 120, color: Colors.grey[100],
-        child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+        width: 120,
+        height: 120,
+        color: Colors.grey[100],
+        child: const Icon(
+          Icons.image_not_supported_outlined,
+          color: Colors.grey,
+        ),
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String key, IconData icon, SearchProvider provider) {
+  Widget _buildFilterChip(
+    String label,
+    String key,
+    IconData icon,
+    SearchProvider provider,
+  ) {
     bool isSelected = provider.activeCategory == key;
     return ChoiceChip(
       label: Text(label),
@@ -329,7 +425,11 @@ class _SearchScreenState extends State<SearchScreen> {
       onSelected: (bool selected) {
         provider.filterByCategory(selected ? key : '');
       },
-      avatar: Icon(icon, size: 18, color: isSelected ? Colors.white : Colors.blueAccent),
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: isSelected ? Colors.white : Colors.blueAccent,
+      ),
       selectedColor: Colors.blueAccent,
       backgroundColor: Colors.white,
       labelStyle: TextStyle(
@@ -338,7 +438,9 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: isSelected ? Colors.blueAccent : Colors.grey.shade200),
+        side: BorderSide(
+          color: isSelected ? Colors.blueAccent : Colors.grey.shade200,
+        ),
       ),
       elevation: isSelected ? 4 : 0,
       pressElevation: 0,
@@ -371,7 +473,11 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.map_outlined, size: 80, color: Colors.blue.withOpacity(0.2)),
+          Icon(
+            Icons.map_outlined,
+            size: 80,
+            color: Colors.blue.withOpacity(0.2),
+          ),
           const SizedBox(height: 16),
           const Text(
             'Bắt đầu hành trình bằng cách\nnhập địa điểm bạn muốn tới',

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'home_page.dart';
-import '../../trip/screens/trip_planning_screen.dart';
-import '../../search/screens/search_screen.dart';
-import '../../profile/screens/profile_screen.dart';
+
 import '../../../core/providers/app_provider.dart';
+import '../../notification/notification_service.dart';
+import '../../profile/screens/profile_screen.dart';
+import '../../search/screens/search_screen.dart';
+import '../../social/screens/social_feed_screen.dart';
+import '../../trip/screens/trip_planning_screen.dart';
+import 'home_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,13 +17,19 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  final List<Widget> _pages = [
-    const HomePage(),
-    const SearchScreen(),
-    const TripPlanningScreen(),
-    const Center(child: Text('Cộng đồng (Sắp có)')),
-    const ProfileScreen(),
+  final List<Widget> _pages = const [
+    HomePage(),
+    SearchScreen(),
+    TripPlanningScreen(),
+    SocialFeedScreen(),
+    ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.instance.consumeInitialNotificationIntent();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +45,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: appProvider.currentTabIndex,
-          onTap: (index) {
-            appProvider.setTab(index);
-          },
+          onTap: appProvider.setTab,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -64,7 +71,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.people_outline),
               activeIcon: Icon(Icons.people),
-              label: 'Cộng đồng',
+              label: 'AI gợi ý',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

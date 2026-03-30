@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../search/provider/search_provider.dart';
-import '../widgets/home_header.dart';
-import '../widgets/search_bar.dart';
+
 import '../widgets/ai_hero_card.dart';
+import '../widgets/home_header.dart';
 import '../widgets/location_list.dart';
+import '../widgets/search_bar.dart';
 import '../widgets/trip_summary.dart';
 
 class HomePage extends StatelessWidget {
@@ -19,7 +18,6 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // No-op refresh for static "Điểm đến phổ biến" section
             return;
           },
           child: const CustomScrollView(
@@ -29,7 +27,6 @@ class HomePage extends StatelessWidget {
               HomeSearchBar(),
               AIHeroCard(),
               LocationList(title: 'Điểm đến phổ biến'),
-              // CategoryList đã được xóa theo yêu cầu
               TripSummary(),
               SliverToBoxAdapter(child: SizedBox(height: 28)),
             ],

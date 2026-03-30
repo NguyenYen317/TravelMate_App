@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../ai/models/ai_planner_models.dart';
+import '../../notification/notification_service.dart';
 import '../models/trip_models.dart';
 
 class TripPlannerProvider extends ChangeNotifier {
@@ -51,6 +53,7 @@ class TripPlannerProvider extends ChangeNotifier {
       _selectedDate = _trips.first.startDate;
     }
 
+    await _syncNotifications();
     _isReady = true;
     notifyListeners();
   }
@@ -58,6 +61,10 @@ class TripPlannerProvider extends ChangeNotifier {
   Future<void> _persist() async {
     final box = await Hive.openBox<dynamic>(_boxName);
     await box.put(_tripKey, _trips.map((trip) => trip.toMap()).toList());
+  }
+
+  Future<void> _syncNotifications() async {
+    await NotificationService.instance.rescheduleFromTrips(_trips);
   }
 
   Future<void> createTrip({
@@ -78,6 +85,57 @@ class TripPlannerProvider extends ChangeNotifier {
     _activeTripId = trip.id;
     _selectedDate = normalizedStart;
     await _persist();
+    await _syncNotifications();
+    notifyListeners();
+  }
+
+  Future<void> createTripFromAiPlan(PlannerResult plannerResult) async {
+    final totalDays = plannerResult.totalDays > 0 ? plannerResult.totalDays : 1;
+    final start = DateTime.now();
+    final normalizedStart = DateTime(start.year, start.month, start.day);
+    final normalizedEnd = normalizedStart.add(Duration(days: totalDays - 1));
+    final tripId = DateTime.now().microsecondsSinceEpoch.toString();
+
+    final generatedLocations = <TripLocation>[];
+    var sequence = 0;
+    for (final plannerDay in plannerResult.itinerary) {
+      final day = normalizedStart.add(Duration(days: plannerDay.day - 1));
+      for (final item in plannerDay.items) {
+        final placeName = item.place.trim();
+        if (placeName.isEmpty) {
+          continue;
+        }
+        generatedLocations.add(
+          TripLocation(
+            id: '${DateTime.now().microsecondsSinceEpoch}_$sequence',
+            name: placeName,
+            day: _clampDate(day, normalizedStart, normalizedEnd),
+            minuteOfDay: _parseMinuteOfDay(item.time),
+            note: item.note,
+          ),
+        );
+        sequence += 1;
+      }
+    }
+
+    final title = plannerResult.destination.trim().isEmpty
+        ? 'Chuyến đi từ AI'
+        : plannerResult.destination.trim();
+
+    final trip = Trip(
+      id: tripId,
+      title: title,
+      startDate: normalizedStart,
+      endDate: normalizedEnd,
+      locations: generatedLocations,
+    );
+
+    _trips.insert(0, trip);
+    _activeTripId = trip.id;
+    _selectedDate = normalizedStart;
+
+    await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -124,6 +182,7 @@ class TripPlannerProvider extends ChangeNotifier {
     }
 
     await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -141,6 +200,7 @@ class TripPlannerProvider extends ChangeNotifier {
     }
 
     await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -181,6 +241,7 @@ class TripPlannerProvider extends ChangeNotifier {
     final updatedLocations = [..._trips[index].locations, newLocation];
     _trips[index] = _trips[index].copyWith(locations: updatedLocations);
     await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -197,6 +258,7 @@ class TripPlannerProvider extends ChangeNotifier {
         .toList();
     _trips[index] = _trips[index].copyWith(locations: updated);
     await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -232,6 +294,7 @@ class TripPlannerProvider extends ChangeNotifier {
 
     _trips[tripIndex] = trip.copyWith(locations: updatedLocations);
     await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -281,6 +344,57 @@ class TripPlannerProvider extends ChangeNotifier {
 
     _trips[tripIndex] = trip.copyWith(locations: rebuilt);
     await _persist();
+    await _syncNotifications();
+    notifyListeners();
+  }
+
+  Future<void> saveAiPlannerResult({
+    required String tripId,
+    required PlannerResult plannerResult,
+  }) async {
+    final tripIndex = _trips.indexWhere((item) => item.id == tripId);
+    if (tripIndex < 0) {
+      return;
+    }
+
+    final trip = _trips[tripIndex];
+    final generatedLocations = <TripLocation>[];
+    var sequence = 0;
+
+    for (final plannerDay in plannerResult.itinerary) {
+      final normalizedDay = _clampDate(
+        trip.startDate.add(Duration(days: plannerDay.day - 1)),
+        trip.startDate,
+        trip.endDate,
+      );
+
+      for (final item in plannerDay.items) {
+        final placeName = item.place.trim();
+        if (placeName.isEmpty) {
+          continue;
+        }
+
+        generatedLocations.add(
+          TripLocation(
+            id: '${DateTime.now().microsecondsSinceEpoch}_$sequence',
+            name: placeName,
+            day: normalizedDay,
+            minuteOfDay: _parseMinuteOfDay(item.time),
+            note: item.note,
+          ),
+        );
+        sequence += 1;
+      }
+    }
+
+    if (generatedLocations.isEmpty) {
+      return;
+    }
+
+    final updatedLocations = [...trip.locations, ...generatedLocations];
+    _trips[tripIndex] = trip.copyWith(locations: updatedLocations);
+    await _persist();
+    await _syncNotifications();
     notifyListeners();
   }
 
@@ -298,6 +412,23 @@ class TripPlannerProvider extends ChangeNotifier {
 
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  int? _parseMinuteOfDay(String? time) {
+    if (time == null) {
+      return null;
+    }
+
+    final normalized = time.trim();
+    final regex = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$');
+    final match = regex.firstMatch(normalized);
+    if (match == null) {
+      return null;
+    }
+
+    final hour = int.parse(match.group(1)!);
+    final minute = int.parse(match.group(2)!);
+    return (hour * 60) + minute;
   }
 
   DateTime _clampDate(DateTime value, DateTime start, DateTime end) {

@@ -222,27 +222,27 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     },
                   ),
                   IconButton(
-                    tooltip: 'Xoá chuyến đi',
+                    tooltip: 'Xóa chuyến đi',
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () async {
                       final shouldDelete = await showDialog<bool>(
                         context: context,
                         builder: (dialogContext) {
                           return AlertDialog(
-                            title: const Text('Xoá chuyến đi'),
+                            title: const Text('Xóa chuyến đi'),
                             content: const Text(
-                              'Bạn có chắc muốn xoá chuyến đi này?',
+                              'Bạn có chắc muốn xóa chuyến đi này?',
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () =>
                                     Navigator.of(dialogContext).pop(false),
-                                child: const Text('Huỷ'),
+                                child: const Text('Hủy'),
                               ),
                               FilledButton(
                                 onPressed: () =>
                                     Navigator.of(dialogContext).pop(true),
-                                child: const Text('Xoá'),
+                                child: const Text('Xóa'),
                               ),
                             ],
                           );
@@ -336,7 +336,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
             TextField(
               controller: _locationNoteCtrl,
               decoration: const InputDecoration(
-                labelText: 'Ghi chú (tuỳ chọn)',
+                labelText: 'Ghi chú (tùy chọn)',
               ),
             ),
             const SizedBox(height: 10),
@@ -468,7 +468,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                             },
                           ),
                           IconButton(
-                            tooltip: 'Xoá địa điểm',
+                            tooltip: 'Xóa địa điểm',
                             icon: const Icon(Icons.delete_outline),
                             onPressed: () async {
                               final shouldDelete = await _confirmDeleteLocation(
@@ -525,16 +525,16 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Xoá địa điểm'),
-          content: Text('Bạn có chắc muốn xoá địa điểm "$name" không?'),
+          title: const Text('Xóa địa điểm'),
+          content: Text('Bạn có chắc muốn xóa địa điểm "$name" không?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Huỷ'),
+              child: const Text('Hủy'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Xoá'),
+              child: const Text('Xóa'),
             ),
           ],
         );
@@ -598,7 +598,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Huỷ'),
+                  child: const Text('Hủy'),
                 ),
                 FilledButton(
                   onPressed: () async {
@@ -710,7 +710,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Huỷ'),
+                  child: const Text('Hủy'),
                 ),
                 FilledButton(
                   onPressed: () async {

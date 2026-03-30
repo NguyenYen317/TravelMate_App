@@ -30,8 +30,14 @@ class ProfileScreen extends StatelessWidget {
                   title: const Text('Đăng xuất'),
                   content: const Text('Bạn có chắc chắn muốn thoát ứng dụng?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
-                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Thoát')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Hủy'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Thoát'),
+                    ),
                   ],
                 ),
               );
@@ -39,10 +45,9 @@ class ProfileScreen extends StatelessWidget {
               if (confirm == true) {
                 await authProvider.logout();
                 if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    AppRoutes.login,
-                    (route) => false,
-                  );
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
                 }
               }
             },
@@ -58,15 +63,26 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 35,
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).primaryColor.withOpacity(0.1),
                   child: const Icon(Icons.person, size: 40, color: Colors.blue),
                 ),
                 const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const Text('Người du lịch đam mê', style: TextStyle(color: Colors.grey)),
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Text(
+                      'Người du lịch đam mê',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               ],
@@ -80,9 +96,15 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.favorite, color: Colors.red),
                 const SizedBox(width: 8),
-                const Text('Địa điểm yêu thích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Địa điểm yêu thích',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const Spacer(),
-                Text('${favorites.length}', style: const TextStyle(color: Colors.grey)),
+                Text(
+                  '${favorites.length}',
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -92,9 +114,16 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.favorite_border, size: 64, color: Colors.grey[300]),
+                        Icon(
+                          Icons.favorite_border,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 16),
-                        const Text('Bạn chưa có địa điểm yêu thích nào.', style: TextStyle(color: Colors.grey)),
+                        const Text(
+                          'Bạn chưa có địa điểm yêu thích nào.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   )
@@ -116,20 +145,45 @@ class ProfileScreen extends StatelessWidget {
                         onDismissed: (direction) {
                           searchProvider.toggleFavorite(p);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Đã xóa ${p.name} khỏi yêu thích")),
+                            SnackBar(
+                              content: Text("Đã xóa ${p.name} khỏi yêu thích"),
+                            ),
                           );
                         },
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: p.imageUrl != null
-                                ? Image.network(p.imageUrl!, width: 50, height: 50, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(width: 50, height: 50, color: Colors.grey[200]))
-                                : Container(width: 50, height: 50, color: Colors.grey[200]),
+                                ? Image.network(
+                                    p.imageUrl!,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 50,
+                                      height: 50,
+                                      color: Colors.grey[200],
+                                    ),
+                                  )
+                                : Container(
+                                    width: 50,
+                                    height: 50,
+                                    color: Colors.grey[200],
+                                  ),
                           ),
-                          title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(p.address, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          title: Text(
+                            p.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            p.address,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.favorite, color: Colors.red),
                             onPressed: () {
@@ -140,7 +194,10 @@ class ProfileScreen extends StatelessWidget {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => PlaceDetailScreen(place: p)),
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PlaceDetailScreen(place: p),
+                              ),
                             );
                           },
                         ),

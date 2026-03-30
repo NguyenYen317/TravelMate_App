@@ -50,26 +50,30 @@ class _MapScreenState extends State<MapScreen> {
       if (permission == LocationPermission.denied) return;
     }
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen((Position position) {
-      if (mounted) {
-        setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-        });
+    _positionStreamSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen((Position position) {
+          if (mounted) {
+            setState(() {
+              _currentLocation = LatLng(position.latitude, position.longitude);
+            });
 
-        if (_followUser) {
-          _mapController.move(_currentLocation!, _mapController.camera.zoom);
-        }
-        
-        if (_routePoints.isEmpty) {
-          _getDirection();
-        }
-      }
-    });
+            if (_followUser) {
+              _mapController.move(
+                _currentLocation!,
+                _mapController.camera.zoom,
+              );
+            }
+
+            if (_routePoints.isEmpty) {
+              _getDirection();
+            }
+          }
+        });
   }
 
   Future<void> _getDirection() async {
@@ -87,9 +91,12 @@ class _MapScreenState extends State<MapScreen> {
 
   // HÀM MỞ GOOGLE MAPS ĐỂ DẪN ĐƯỜNG THỰC TẾ
   Future<void> _launchGoogleNavigation() async {
-    final String url = "google.navigation:q=${widget.place.lat},${widget.place.lng}&mode=d";
+    final String url =
+        "google.navigation:q=${widget.place.lat},${widget.place.lng}&mode=d";
     final Uri uri = Uri.parse(url);
-    final Uri webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${widget.place.lat},${widget.place.lng}&travelmode=driving");
+    final Uri webUri = Uri.parse(
+      "https://www.google.com/maps/dir/?api=1&destination=${widget.place.lat},${widget.place.lng}&travelmode=driving",
+    );
 
     try {
       if (await canLaunchUrl(uri)) {
@@ -110,29 +117,42 @@ class _MapScreenState extends State<MapScreen> {
     if (_currentLocation == null) return;
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return FutureBuilder<Place>(
-          future: _searchService.reverseGeocode(_currentLocation!.latitude, _currentLocation!.longitude),
+          future: _searchService.reverseGeocode(
+            _currentLocation!.latitude,
+            _currentLocation!.longitude,
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+              return const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              );
             }
-            final myPlace = snapshot.data ?? Place(
-              id: '', 
-              name: 'Vị trí của bạn', 
-              address: 'Đang tải...',
-              lat: _currentLocation!.latitude,
-              lng: _currentLocation!.longitude,
-            );
-            
+            final myPlace =
+                snapshot.data ??
+                Place(
+                  id: '',
+                  name: 'Vị trí của bạn',
+                  address: 'Đang tải...',
+                  lat: _currentLocation!.latitude,
+                  lng: _currentLocation!.longitude,
+                );
+
             return Container(
               padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Vị trí của bạn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Vị trí của bạn",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const Divider(),
                   Text(myPlace.address, style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 20),
@@ -141,7 +161,8 @@ class _MapScreenState extends State<MapScreen> {
                     height: 50,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        final String myLocLink = "https://www.google.com/maps/search/?api=1&query=${_currentLocation!.latitude},${_currentLocation!.longitude}";
+                        final String myLocLink =
+                            "https://www.google.com/maps/search/?api=1&query=${_currentLocation!.latitude},${_currentLocation!.longitude}";
                         Share.share("Vị trí của mình: $myLocLink");
                       },
                       icon: const Icon(Icons.share),
@@ -149,7 +170,9 @@ class _MapScreenState extends State<MapScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -167,9 +190,7 @@ class _MapScreenState extends State<MapScreen> {
     final destination = LatLng(widget.place.lat, widget.place.lng);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.place.name),
-      ),
+      appBar: AppBar(title: Text(widget.place.name)),
       body: Stack(
         children: [
           FlutterMap(
@@ -177,9 +198,12 @@ class _MapScreenState extends State<MapScreen> {
             options: MapOptions(
               initialCenter: destination,
               initialZoom: 15.0,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
               onPositionChanged: (position, hasGesture) {
-                if (hasGesture && _followUser) setState(() => _followUser = false);
+                if (hasGesture && _followUser)
+                  setState(() => _followUser = false);
               },
             ),
             children: [
@@ -190,7 +214,11 @@ class _MapScreenState extends State<MapScreen> {
               if (_routePoints.isNotEmpty)
                 PolylineLayer(
                   polylines: [
-                    Polyline(points: _routePoints, color: Colors.blueAccent, strokeWidth: 6.0),
+                    Polyline(
+                      points: _routePoints,
+                      color: Colors.blueAccent,
+                      strokeWidth: 6.0,
+                    ),
                   ],
                 ),
               MarkerLayer(
@@ -199,7 +227,11 @@ class _MapScreenState extends State<MapScreen> {
                     point: destination,
                     width: 50,
                     height: 50,
-                    child: const Icon(Icons.location_on, color: Colors.red, size: 45),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 45,
+                    ),
                   ),
                   if (_currentLocation != null)
                     Marker(
@@ -214,7 +246,11 @@ class _MapScreenState extends State<MapScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
-                          child: const Icon(Icons.person_pin_circle, color: Colors.blue, size: 30),
+                          child: const Icon(
+                            Icons.person_pin_circle,
+                            color: Colors.blue,
+                            size: 30,
+                          ),
                         ),
                       ),
                     ),
@@ -222,7 +258,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ],
           ),
-          
+
           // NÚT "BẮT ĐẦU ĐI" - CHUYỂN HƯỚNG SANG GOOGLE MAPS
           Positioned(
             bottom: 30,
@@ -233,19 +269,23 @@ class _MapScreenState extends State<MapScreen> {
               child: ElevatedButton.icon(
                 onPressed: _launchGoogleNavigation,
                 icon: const Icon(Icons.navigation, size: 28),
-                label: const Text('BẮT ĐẦU ĐI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'BẮT ĐẦU ĐI',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[600],
                   foregroundColor: Colors.white,
                   elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
               ),
             ),
           ),
 
-          if (_isLoadingRoute)
-            const Center(child: CircularProgressIndicator()),
+          if (_isLoadingRoute) const Center(child: CircularProgressIndicator()),
         ],
       ),
       floatingActionButton: Column(
@@ -260,7 +300,10 @@ class _MapScreenState extends State<MapScreen> {
               }
             },
             backgroundColor: _followUser ? Colors.blue : Colors.grey,
-            child: Icon(_followUser ? Icons.gps_fixed : Icons.gps_not_fixed, color: Colors.white),
+            child: Icon(
+              _followUser ? Icons.gps_fixed : Icons.gps_not_fixed,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(

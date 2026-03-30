@@ -70,10 +70,11 @@ class SearchProvider extends ChangeNotifier {
   /// Lọc theo danh mục (Sử dụng Cache từ SearchService)
   Future<void> filterByCategory(String category) async {
     // Nếu chọn lại category cũ thì bỏ chọn (toggle off)
-    final String? newCategory = (category == _activeCategory || category.isEmpty) ? null : category;
-    
+    final String? newCategory =
+        (category == _activeCategory || category.isEmpty) ? null : category;
+
     if (newCategory == _activeCategory) return;
-    
+
     _activeCategory = newCategory;
     _isLoading = true;
     _hasSearched = true;
@@ -82,7 +83,7 @@ class SearchProvider extends ChangeNotifier {
     try {
       // Gọi service: Service đã có sẵn logic Caching theo Query + Category
       _searchResults = await _searchService.searchPlaces(
-        _currentQuery, 
+        _currentQuery,
         category: _activeCategory,
       );
     } catch (e) {
@@ -101,7 +102,11 @@ class SearchProvider extends ChangeNotifier {
     try {
       Position position = await _determinePosition();
       // Tận dụng service search với tọa độ
-      _nearbyPlaces = await _searchService.searchPlaces("", lat: position.latitude, lon: position.longitude);
+      _nearbyPlaces = await _searchService.searchPlaces(
+        "",
+        lat: position.latitude,
+        lon: position.longitude,
+      );
     } catch (e) {
       debugPrint("Nearby Error: $e");
     } finally {
@@ -116,24 +121,33 @@ class SearchProvider extends ChangeNotifier {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return Future.error('Quyền vị trí bị từ chối');
+      if (permission == LocationPermission.denied)
+        return Future.error('Quyền vị trí bị từ chối');
     }
     return await Geolocator.getCurrentPosition();
   }
 
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
-    final List<String> favList = prefs.getStringList('favorite_places_data') ?? [];
-    _favoritePlaces = favList.map((item) => Place.fromMap(json.decode(item))).toList();
+    final List<String> favList =
+        prefs.getStringList('favorite_places_data') ?? [];
+    _favoritePlaces = favList
+        .map((item) => Place.fromMap(json.decode(item)))
+        .toList();
     notifyListeners();
   }
 
   void toggleFavorite(Place place) async {
     final index = _favoritePlaces.indexWhere((p) => p.id == place.id);
-    if (index >= 0) _favoritePlaces.removeAt(index);
-    else _favoritePlaces.add(place);
+    if (index >= 0)
+      _favoritePlaces.removeAt(index);
+    else
+      _favoritePlaces.add(place);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('favorite_places_data', _favoritePlaces.map((e) => json.encode(e.toMap())).toList());
+    await prefs.setStringList(
+      'favorite_places_data',
+      _favoritePlaces.map((e) => json.encode(e.toMap())).toList(),
+    );
     notifyListeners();
   }
 

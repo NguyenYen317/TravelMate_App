@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../auth/provider/auth_provider.dart';
+import '../../notification/notification_service.dart';
+import '../../notification/widgets/pending_notifications_widget.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
@@ -21,7 +24,7 @@ class HomeHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Chào $userName, 👋',
+                  'Chào $userName',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -49,7 +52,7 @@ class HomeHeader extends StatelessWidget {
                 ],
               ),
               child: IconButton(
-                onPressed: () {},
+                onPressed: () => _openNotifications(context),
                 icon: Icon(
                   Icons.notifications_outlined,
                   size: 22,
@@ -60,6 +63,32 @@ class HomeHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _openNotifications(BuildContext context) async {
+    await NotificationService.instance
+        .ensurePermissionRequestedOnFirstModuleAccess();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: SizedBox(
+            height: MediaQuery.of(sheetContext).size.height * 0.7,
+            child: const SingleChildScrollView(
+              child: PendingNotificationsWidget(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

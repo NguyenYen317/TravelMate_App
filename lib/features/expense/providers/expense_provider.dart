@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'dart:math';
 
 import '../models/expense_item.dart';
 
@@ -134,6 +135,56 @@ class ExpenseProvider extends ChangeNotifier {
 
   Future<void> deleteExpensesByTrip(String tripId) async {
     _allExpenses.removeWhere((item) => item.tripId == tripId);
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> seedRandomExpensesIfEmpty({
+    required String tripId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final existing = expensesByTrip(tripId);
+    if (existing.isNotEmpty) {
+      return;
+    }
+
+    final random = Random(tripId.hashCode);
+    final daySpan = endDate.difference(startDate).inDays;
+    final count = 2 + random.nextInt(2); // 2-3 expense items
+    final expenseTypes = ['Food', 'Transport', 'Ticket', 'Other'];
+    final sampleTitles = {
+      'Food': ['Ăn sáng', 'Bữa trưa', 'Đặc sản địa phương'],
+      'Transport': ['Taxi', 'Xe công nghệ', 'Thuê xe máy'],
+      'Ticket': ['Vé tham quan', 'Vé vào cổng', 'Vé sự kiện'],
+      'Other': ['Nước uống', 'Đồ dùng cá nhân', 'Chi phí phát sinh'],
+    };
+
+    for (var i = 0; i < count; i++) {
+      final type = expenseTypes[random.nextInt(expenseTypes.length)];
+      final titles = sampleTitles[type]!;
+      final title = titles[random.nextInt(titles.length)];
+      final amount = 50000 + random.nextInt(250000); // 50k-300k
+      final dayOffset = daySpan <= 0 ? 0 : random.nextInt(daySpan + 1);
+      final date = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+      ).add(Duration(days: dayOffset));
+
+      _allExpenses.add(
+        ExpenseItem(
+          id: '${DateTime.now().microsecondsSinceEpoch}_seed_$i',
+          tripId: tripId,
+          title: title,
+          amount: amount.toDouble(),
+          type: type,
+          date: date,
+          note: 'Chi phí gợi ý tự động',
+        ),
+      );
+    }
+
     await _persist();
     notifyListeners();
   }
