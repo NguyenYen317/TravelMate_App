@@ -1,11 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../models/expense_item.dart';
 import '../../trip/models/trip_models.dart';
 import '../../trip/providers/trip_planner_provider.dart';
+import '../models/expense_item.dart';
 import '../providers/expense_provider.dart';
 import '../services/receipt_processing_service.dart';
 
@@ -33,6 +35,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   final TextEditingController _amountCtrl = TextEditingController();
   final TextEditingController _noteCtrl = TextEditingController();
   final ReceiptProcessingService _receiptService = ReceiptProcessingService();
+
+  final Set<String> _seededTripIds = <String>{};
 
   String _type = 'Food';
   DateTime? _expenseDate;
@@ -64,6 +68,17 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               child: Text('Không tìm thấy chuyến đi để quản lý chi phí.'),
             ),
           );
+        }
+
+        if (!_seededTripIds.contains(trip.id)) {
+          _seededTripIds.add(trip.id);
+          Future.microtask(() {
+            expenseProvider.seedRandomExpensesIfEmpty(
+              tripId: trip.id,
+              startDate: trip.startDate,
+              endDate: trip.endDate,
+            );
+          });
         }
 
         final expenses = expenseProvider.filteredExpensesByTrip(trip.id);
@@ -127,7 +142,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: provider.filterType,
+                    initialValue: provider.filterType,
                     decoration: const InputDecoration(
                       labelText: 'Loại chi phí',
                     ),
@@ -140,10 +155,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         )
                         .toList(),
                     onChanged: (value) {
-                      if (value == null) {
-                        return;
+                      if (value != null) {
+                        provider.setFilterType(value);
                       }
-                      provider.setFilterType(value);
                     },
                   ),
                 ),
@@ -177,7 +191,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 provider.setFilterType('All');
                 provider.setFilterDate(null);
               },
-              child: const Text('Xoá bộ lọc'),
+              child: const Text('Xóa bộ lọc'),
             ),
           ],
         ),
@@ -226,7 +240,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Loại'),
               items: ExpenseProvider.types
                   .where((item) => item != 'All')
@@ -238,12 +252,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   )
                   .toList(),
               onChanged: (value) {
-                if (value == null) {
-                  return;
+                if (value != null) {
+                  setState(() {
+                    _type = value;
+                  });
                 }
-                setState(() {
-                  _type = value;
-                });
               },
             ),
             const SizedBox(height: 10),
@@ -267,12 +280,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           trip.endDate,
                         ),
                       );
-                      if (picked == null) {
-                        return;
+                      if (picked != null) {
+                        setState(() {
+                          _expenseDate = picked;
+                        });
                       }
-                      setState(() {
-                        _expenseDate = picked;
-                      });
                     },
                     icon: const Icon(Icons.event),
                     label: Text(_fmtDate(effectiveDate)),
@@ -325,6 +337,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       spacing: 8,
       runSpacing: 8,
       children: [
+        OutlinedButton.icon(
+          onPressed: _isScanning
+              ? null
+              : () => _scanReceiptFromSource(
+                  context,
+                  provider,
+                  trip,
+                  ImageSource.camera,
+                ),
+          icon: const Icon(Icons.photo_camera_outlined),
+          label: const Text('Chụp từ camera'),
+        ),
         OutlinedButton.icon(
           onPressed: _isScanning
               ? null
@@ -386,31 +410,29 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         },
                       ),
                       IconButton(
-                        tooltip: 'Xoá chi phí',
+                        tooltip: 'Xóa chi phí',
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () async {
                           final shouldDelete = await showDialog<bool>(
                             context: context,
-                            builder: (dialogContext) {
-                              return AlertDialog(
-                                title: const Text('Xoá chi phí'),
-                                content: const Text(
-                                  'Bạn có chắc muốn xoá chi phí này?',
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('Xóa chi phí'),
+                              content: const Text(
+                                'Bạn có chắc muốn xóa chi phí này?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(false),
+                                  child: const Text('Hủy'),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(dialogContext).pop(false),
-                                    child: const Text('Huỷ'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () =>
-                                        Navigator.of(dialogContext).pop(true),
-                                    child: const Text('Xoá'),
-                                  ),
-                                ],
-                              );
-                            },
+                                FilledButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogContext).pop(true),
+                                  child: const Text('Xóa'),
+                                ),
+                              ],
+                            ),
                           );
                           if (shouldDelete == true) {
                             await provider.deleteExpense(item.id);
@@ -439,7 +461,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       return null;
     }
 
-    // Accept common Vietnamese formats: 1000000, 1.000.000, 1,000,000
     final thousandNormalized = normalized
         .replaceAll('.', '')
         .replaceAll(',', '');
@@ -478,25 +499,116 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     Trip trip,
     ImageSource source,
   ) async {
-    setState(() {
-      _isScanning = true;
-    });
-
-    ReceiptScanResult? result;
-    try {
-      result = await _receiptService.scanReceipt(source: source);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isScanning = false;
-        });
-      }
-    }
-
-    if (!mounted || result == null) {
+    final pickedImage = await _receiptService.pickReceiptImage(source: source);
+    if (!mounted || pickedImage == null) {
       return;
     }
 
+    await _showReceiptPreviewAndScan(context, provider, trip, pickedImage);
+  }
+
+  Future<void> _showReceiptPreviewAndScan(
+    BuildContext context,
+    ExpenseProvider provider,
+    Trip trip,
+    XFile pickedImage,
+  ) async {
+    ReceiptScanResult? scannedResult;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        var isProcessing = false;
+        return StatefulBuilder(
+          builder: (localContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Xem trước hóa đơn'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(pickedImage.path),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('Kiểm tra ảnh rõ nét trước khi quét OCR.'),
+                    if (isProcessing) ...[
+                      const SizedBox(height: 10),
+                      const Center(child: CircularProgressIndicator()),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isProcessing
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton.icon(
+                  onPressed: isProcessing
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isProcessing = true;
+                          });
+                          setState(() {
+                            _isScanning = true;
+                          });
+
+                          try {
+                            final recognized = await _receiptService
+                                .scanReceiptByPath(pickedImage.path);
+                            final cloudUrl = await _receiptService
+                                .uploadToCloudinary(pickedImage);
+
+                            scannedResult = ReceiptScanResult(
+                              rawText: recognized.rawText,
+                              storeName: recognized.storeName,
+                              totalAmount: recognized.totalAmount,
+                              date: recognized.date,
+                              summary: recognized.summary,
+                              suggestedType: recognized.suggestedType,
+                              cloudinaryUrl: cloudUrl,
+                            );
+
+                            if (localContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isScanning = false;
+                              });
+                            }
+                            if (localContext.mounted) {
+                              setDialogState(() {
+                                isProcessing = false;
+                              });
+                            }
+                          }
+                        },
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: const Text('Bắt đầu quét'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || scannedResult == null) {
+      return;
+    }
+
+    final result = scannedResult!;
     if (result.rawText.trim().isEmpty) {
       _showSnack(
         context,
@@ -576,7 +688,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: type,
+                      initialValue: type,
                       decoration: const InputDecoration(
                         labelText: 'Phân loại chi phí',
                       ),
@@ -590,12 +702,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           )
                           .toList(),
                       onChanged: (value) {
-                        if (value == null) {
-                          return;
+                        if (value != null) {
+                          setDialogState(() {
+                            type = value;
+                          });
                         }
-                        setDialogState(() {
-                          type = value;
-                        });
                       },
                     ),
                     const SizedBox(height: 10),
@@ -615,12 +726,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           lastDate: _onlyDate(trip.endDate),
                           initialDate: date,
                         );
-                        if (picked == null) {
-                          return;
+                        if (picked != null) {
+                          setDialogState(() {
+                            date = picked;
+                          });
                         }
-                        setDialogState(() {
-                          date = picked;
-                        });
                       },
                       icon: const Icon(Icons.event),
                       label: Text(_fmtDate(date)),
@@ -634,7 +744,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   child: const Text('Bỏ qua'),
                 ),
                 FilledButton(
-                  onPressed: () async {
+                  onPressed: () {
                     final title = titleCtrl.text.trim();
                     final amount = _parseAmount(amountCtrl.text);
                     if (title.isEmpty || amount == null || amount <= 0) {
@@ -645,21 +755,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       return;
                     }
 
-                    await provider.addExpense(
-                      tripId: trip.id,
-                      title: title,
-                      amount: amount,
-                      type: type,
-                      date: date,
-                      note: noteCtrl.text,
+                    _titleCtrl.text = title;
+                    _amountCtrl.text = amount.toStringAsFixed(0);
+                    _noteCtrl.text = noteCtrl.text.trim();
+                    setState(() {
+                      _type = type;
+                      _expenseDate = date;
+                    });
+                    Navigator.of(dialogContext).pop();
+                    _showSnack(
+                      context,
+                      'Đã điền dữ liệu OCR vào form. Kiểm tra và bấm "Thêm chi phí" để lưu.',
                     );
-
-                    if (context.mounted) {
-                      Navigator.of(dialogContext).pop();
-                      _showSnack(context, 'Đã lưu chi phí từ hóa đơn OCR.');
-                    }
                   },
-                  child: const Text('Lưu vào chi phí'),
+                  child: const Text('Áp dụng vào biểu mẫu'),
                 ),
               ],
             );
@@ -716,7 +825,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: type,
+                      initialValue: type,
                       decoration: const InputDecoration(labelText: 'Loại'),
                       items: ExpenseProvider.types
                           .where((value) => value != 'All')
@@ -728,12 +837,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           )
                           .toList(),
                       onChanged: (value) {
-                        if (value == null) {
-                          return;
+                        if (value != null) {
+                          setModalState(() {
+                            type = value;
+                          });
                         }
-                        setModalState(() {
-                          type = value;
-                        });
                       },
                     ),
                     const SizedBox(height: 10),
@@ -754,12 +862,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                             trip.endDate,
                           ),
                         );
-                        if (picked == null) {
-                          return;
+                        if (picked != null) {
+                          setModalState(() {
+                            date = picked;
+                          });
                         }
-                        setModalState(() {
-                          date = picked;
-                        });
                       },
                       icon: const Icon(Icons.event),
                       label: Text(_fmtDate(date)),
@@ -770,7 +877,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Huỷ'),
+                  child: const Text('Hủy'),
                 ),
                 FilledButton(
                   onPressed: () async {

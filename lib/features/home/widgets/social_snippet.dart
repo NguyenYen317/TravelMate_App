@@ -8,12 +8,9 @@ class SocialSnippet extends StatelessWidget {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            return _buildSocialCard(context);
-          },
-          childCount: 3,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          return _buildSocialCard(context);
+        }, childCount: 3),
       ),
     );
   }
@@ -37,7 +34,11 @@ class SocialSnippet extends StatelessWidget {
               height: 180,
               width: double.infinity,
               color: colorScheme.surfaceContainerHighest,
-              child: Icon(Icons.image_outlined, color: colorScheme.onSurfaceVariant, size: 50),
+              child: Icon(
+                Icons.image_outlined,
+                color: colorScheme.onSurfaceVariant,
+                size: 50,
+              ),
             ),
           ),
           Padding(
@@ -56,9 +57,16 @@ class SocialSnippet extends StatelessWidget {
                   children: [
                     CircleAvatar(radius: 10, backgroundColor: Colors.blue[100]),
                     const SizedBox(width: 8),
-                    const Text('Hoàng Nam', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text(
+                      'Hoàng Nam',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                     const Spacer(),
-                    const Icon(Icons.favorite_border, size: 16, color: Colors.grey),
+                    const Icon(
+                      Icons.favorite_border,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
                     const Text(' 12', style: TextStyle(fontSize: 12)),
                   ],
                 ),

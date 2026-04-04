@@ -12,6 +12,7 @@ class TravelMateApp extends StatelessWidget {
       title: 'TravelMate',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      navigatorKey: AppRoutes.navigatorKey,
       initialRoute: AppRoutes.authGate,
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );

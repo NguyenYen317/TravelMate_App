@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:travelmate_app/features/search/provider/search_provider.dart';
@@ -16,17 +16,21 @@ void main() {
 
   testWidgets('SearchScreen renders core UI', (WidgetTester tester) async {
     await tester.pumpWidget(buildSearchScreen());
-
     await tester.pump();
 
-    expect(find.text('Khám phá địa điểm'), findsOneWidget);
-    expect(find.text('Tìm kiếm...'), findsOneWidget);
+    expect(find.text('Khám phá'), findsOneWidget);
+    expect(
+      find.text('Bạn muốn đi đâu? (Đà Nẵng, Phú Quốc...)'),
+      findsOneWidget,
+    );
     expect(find.text('Nhà hàng'), findsOneWidget);
     expect(find.text('Khách sạn'), findsOneWidget);
-    expect(find.text('Điểm du lịch'), findsOneWidget);
+    expect(find.text('Tham quan'), findsOneWidget);
   });
 
-  testWidgets('SearchScreen supports typing and clear action', (WidgetTester tester) async {
+  testWidgets('SearchScreen supports typing and clear action', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(buildSearchScreen());
     await tester.pump();
 
@@ -36,11 +40,11 @@ void main() {
     await tester.enterText(textFieldFinder, 'Đà Nẵng');
     await tester.pump();
 
-    expect(find.byIcon(Icons.clear), findsOneWidget);
+    expect(find.byIcon(Icons.cancel_rounded), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.clear));
+    await tester.tap(find.byIcon(Icons.cancel_rounded));
     await tester.pump();
 
-    expect(find.byIcon(Icons.clear), findsNothing);
+    expect(find.byIcon(Icons.cancel_rounded), findsNothing);
   });
 }

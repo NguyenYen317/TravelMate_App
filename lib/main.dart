@@ -6,8 +6,10 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'features/auth/auth_service.dart';
 import 'features/auth/provider/auth_provider.dart';
+import 'features/ai/ai_provider.dart';
 import 'features/expense/providers/expense_provider.dart';
 import 'features/search/provider/search_provider.dart';
+import 'features/social/providers/social_provider.dart';
 import 'features/trip/providers/trip_planner_provider.dart';
 import 'core/providers/app_provider.dart';
 
@@ -31,6 +33,7 @@ Future<void> main() async {
         ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
         ChangeNotifierProvider<SearchProvider>(create: (_) => SearchProvider()),
         ChangeNotifierProxyProvider<AuthProvider, TripPlannerProvider>(
+        ChangeNotifierProvider<AIProvider>(create: (_) => AIProvider()),
           create: (_) => TripPlannerProvider(),
           update: (_, authProvider, tripProvider) {
             final provider = tripProvider ?? TripPlannerProvider();
@@ -39,6 +42,7 @@ Future<void> main() async {
           },
         ),
         ChangeNotifierProxyProvider<AuthProvider, ExpenseProvider>(
+        ChangeNotifierProvider<SocialProvider>(create: (_) => SocialProvider()),
           create: (_) => ExpenseProvider(),
           update: (_, authProvider, expenseProvider) {
             final provider = expenseProvider ?? ExpenseProvider();

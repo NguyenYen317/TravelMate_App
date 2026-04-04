@@ -14,11 +14,35 @@
       },
       "oauth_client": [
         {
+          "client_id": "556047764972-e2j7m6nkulkqt7tcmk4hsqjmv9m2p6kp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.travelmate_app",
+            "certificate_hash": "57d766f8d3ca67a6ef16125c246dc40680a32cc1"
+          }
+        },
+        {
           "client_id": "556047764972-lqeiqg8rm39ut2v0vnhuqfsj01epajao.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.travelmate_app",
             "certificate_hash": "dda323e4546803b5c64698f39c67dee83378954d"
+          }
+        },
+        {
+          "client_id": "556047764972-lquuq7gd06ln1dnfr5ja3i60vt8hrjqj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.travelmate_app",
+            "certificate_hash": "3af1efbbd437d1c443bbc2482432242a33c20ac1"
+          }
+        },
+        {
+          "client_id": "556047764972-m3frqpmtjf6pqgp8m8psmtgtnmcivg4m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.travelmate_app",
+            "certificate_hash": "40a061572b95afd86b984084a2b2023369c0eac6"
           }
         },
         {

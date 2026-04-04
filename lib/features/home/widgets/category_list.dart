@@ -30,9 +30,19 @@ class CategoryList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _buildCategoryChip(context, 'Nhà hàng', Icons.restaurant, 'restaurant'),
+                _buildCategoryChip(
+                  context,
+                  'Nhà hàng',
+                  Icons.restaurant,
+                  'restaurant',
+                ),
                 _buildCategoryChip(context, 'Khách sạn', Icons.hotel, 'hotel'),
-                _buildCategoryChip(context, 'Tham quan', Icons.camera_alt, 'tourism'),
+                _buildCategoryChip(
+                  context,
+                  'Tham quan',
+                  Icons.camera_alt,
+                  'tourism',
+                ),
                 _buildCategoryChip(context, 'Cà phê', Icons.coffee, 'cafe'),
               ],
             ),
@@ -42,7 +52,12 @@ class CategoryList extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryChip(BuildContext context, String label, IconData icon, String searchKey) {
+  Widget _buildCategoryChip(
+    BuildContext context,
+    String label,
+    IconData icon,
+    String searchKey,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     final appProvider = Provider.of<AppProvider>(context, listen: false);
     final searchProvider = Provider.of<SearchProvider>(context, listen: false);
@@ -56,7 +71,7 @@ class CategoryList extends StatelessWidget {
           onTap: () {
             // 1. Chuyển sang Tab Khám phá (Index 1)
             appProvider.setTab(1);
-            
+
             // 2. Gọi hàm lọc theo danh mục
             // Hàm này sẽ tự động fetch địa điểm gần đây và lọc theo category
             searchProvider.filterByCategory(searchKey);

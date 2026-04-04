@@ -30,7 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLocalLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -38,7 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
         username: _usernameController.text,
         password: _passwordController.text,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+      await context.read<AuthProvider>().loadSession();
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacementNamed(AppRoutes.home);
     } on AuthException catch (e) {
       _showMessage(e.message);
@@ -55,7 +63,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await context.read<AuthProvider>().loginWithGoogle();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+      await context.read<AuthProvider>().loadSession();
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pushReplacementNamed(AppRoutes.home);
     } on AuthException catch (e) {
       _showMessage(e.message);
@@ -69,7 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showMessage(String message) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));

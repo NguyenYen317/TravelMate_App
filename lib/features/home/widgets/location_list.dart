@@ -176,14 +176,21 @@ class LocationList extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Row(
                                     children: [
-                                      const Icon(Icons.location_on, color: Colors.white70, size: 10),
+                                      const Icon(
+                                        Icons.location_on,
+                                        color: Colors.white70,
+                                        size: 10,
+                                      ),
                                       const SizedBox(width: 4),
                                       Expanded(
                                         child: Material(
                                           color: Colors.transparent,
                                           child: Text(
                                             place.address,
-                                            style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 10,
+                                            ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),

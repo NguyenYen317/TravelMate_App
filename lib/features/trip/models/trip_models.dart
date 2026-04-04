@@ -41,6 +41,8 @@ class Trip {
     required this.startDate,
     required this.endDate,
     required this.locations,
+    this.startMinuteOfDay,
+    this.endMinuteOfDay,
   });
 
   final String id;
@@ -48,6 +50,8 @@ class Trip {
   final DateTime startDate;
   final DateTime endDate;
   final List<TripLocation> locations;
+  final int? startMinuteOfDay;
+  final int? endMinuteOfDay;
 
   Trip copyWith({
     String? id,
@@ -55,6 +59,8 @@ class Trip {
     DateTime? startDate,
     DateTime? endDate,
     List<TripLocation>? locations,
+    int? startMinuteOfDay,
+    int? endMinuteOfDay,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -62,6 +68,8 @@ class Trip {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       locations: locations ?? this.locations,
+      startMinuteOfDay: startMinuteOfDay ?? this.startMinuteOfDay,
+      endMinuteOfDay: endMinuteOfDay ?? this.endMinuteOfDay,
     );
   }
 
@@ -72,6 +80,8 @@ class Trip {
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'locations': locations.map((item) => item.toMap()).toList(),
+      'startMinuteOfDay': startMinuteOfDay,
+      'endMinuteOfDay': endMinuteOfDay,
     };
   }
 
@@ -84,6 +94,8 @@ class Trip {
       locations: (map['locations'] as List<dynamic>)
           .map((item) => TripLocation.fromMap(item as Map<dynamic, dynamic>))
           .toList(),
+      startMinuteOfDay: map['startMinuteOfDay'] as int?,
+      endMinuteOfDay: map['endMinuteOfDay'] as int?,
     );
   }
 }

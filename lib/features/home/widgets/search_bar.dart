@@ -38,7 +38,11 @@ class HomeSearchBar extends StatelessWidget {
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                   const Spacer(),
-                  Icon(Icons.tune, size: 18, color: colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.tune,
+                    size: 18,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ],
               ),
             ),

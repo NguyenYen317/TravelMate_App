@@ -34,7 +34,11 @@ class PlaceDetailScreen extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.black26, Colors.transparent, Colors.black54],
+                        colors: [
+                          Colors.black26,
+                          Colors.transparent,
+                          Colors.black54,
+                        ],
                       ),
                     ),
                   ),
@@ -67,7 +71,10 @@ class PlaceDetailScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -75,41 +82,55 @@ class PlaceDetailScreen extends StatelessWidget {
                         child: Text(
                           place.category.toUpperCase(),
                           style: const TextStyle(
-                            color: Colors.blue, 
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 12
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                          const Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber,
+                            size: 20,
+                          ),
                           Text(
-                            place.rating.toStringAsFixed(1), 
-                            style: const TextStyle(fontWeight: FontWeight.bold)
+                            place.rating.toStringAsFixed(1),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Name
                   Text(
                     place.name,
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Address (Real location)
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 18),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        color: Colors.grey,
+                        size: 18,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           place.address,
-                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -124,19 +145,26 @@ class PlaceDetailScreen extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
-                          context, 
-                          MaterialPageRoute(builder: (context) => MapScreen(place: place))
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MapScreen(place: place),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.directions),
                       label: const Text(
                         "CHỈ ĐƯỜNG",
-                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -162,7 +190,7 @@ class PlaceDetailScreen extends StatelessWidget {
       return Image.asset(imageUrl, fit: BoxFit.cover);
     }
     return Image.network(
-      imageUrl, 
+      imageUrl,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => Container(
         color: Colors.grey[200],

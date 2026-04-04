@@ -7,10 +7,10 @@ import '../../data/models/place.dart';
 
 class SearchService {
   final ApiService _apiService = ApiService();
-  
+
   // Cache lưu trữ kết quả theo query + filter + tọa độ
   final Map<String, List<Place>> _searchCache = {};
-  
+
   // Lưu trữ tọa độ trung tâm của các địa danh đã tìm kiếm để tránh geocoding lại
   final Map<String, Map<String, double>> _locationCenterCache = {};
 
@@ -27,7 +27,10 @@ class SearchService {
     });
 
     try {
-      final response = await http.get(url, headers: {'User-Agent': 'TravelMateApp/1.0'});
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'TravelMateApp/1.0'},
+      );
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         return Place.fromNominatim(data);
@@ -36,17 +39,30 @@ class SearchService {
       debugPrint("ReverseGeocode Error: $e");
     }
     // Trả về một Place mặc định nếu lỗi
-    return Place(id: 'unknown', name: 'Vị trí hiện tại', address: 'Đang xác định...', lat: lat, lng: lon);
+    return Place(
+      id: 'unknown',
+      name: 'Vị trí hiện tại',
+      address: 'Đang xác định...',
+      lat: lat,
+      lng: lon,
+    );
   }
 
   /// Hàm tìm kiếm chính tích hợp Caching và lọc theo Category
-  Future<List<Place>> searchPlaces(String query, {String? category, double? lat, double? lon, double radius = defaultFilterRadius}) async {
+  Future<List<Place>> searchPlaces(
+    String query, {
+    String? category,
+    double? lat,
+    double? lon,
+    double radius = defaultFilterRadius,
+  }) async {
     final normalizedQuery = _normalizeQuery(query);
     if (normalizedQuery.isEmpty && category == null && lat == null) return [];
 
     // 1. Tạo Cache Key duy nhất
-    final cacheKey = "${normalizedQuery}_${category ?? 'all'}_${lat ?? 0}_${lon ?? 0}_$radius";
-    
+    final cacheKey =
+        "${normalizedQuery}_${category ?? 'all'}_${lat ?? 0}_${lon ?? 0}_$radius";
+
     if (_searchCache.containsKey(cacheKey)) {
       debugPrint("SearchService: [CACHE HIT] returning results for $cacheKey");
       return _searchCache[cacheKey]!;
@@ -68,16 +84,19 @@ class SearchService {
             final topMatch = geocodeResults.first;
             targetLat = double.parse(topMatch['lat']);
             targetLon = double.parse(topMatch['lon']);
-            _locationCenterCache[normalizedQuery] = {'lat': targetLat, 'lon': targetLon};
+            _locationCenterCache[normalizedQuery] = {
+              'lat': targetLat,
+              'lon': targetLon,
+            };
           }
         }
       }
 
       // 3. Thực hiện gọi API
       final List<Place> finalResults = await _fetchFromNominatim(
-        normalizedQuery, 
+        normalizedQuery,
         category: category,
-        lat: targetLat != 0 ? targetLat : null, 
+        lat: targetLat != 0 ? targetLat : null,
         lon: targetLon != 0 ? targetLon : null,
         radius: radius,
       );
@@ -99,7 +118,6 @@ class SearchService {
 
       _searchCache[cacheKey] = processedResults;
       return processedResults;
-
     } catch (e) {
       debugPrint("SearchService Error: $e");
       return [];
@@ -117,11 +135,22 @@ class SearchService {
       'limit': '1',
       'countrycodes': 'vn',
     });
-    final response = await http.get(url, headers: {'User-Agent': 'TravelMateApp/1.0'});
-    return response.statusCode == 200 ? json.decode(utf8.decode(response.bodyBytes)) : [];
+    final response = await http.get(
+      url,
+      headers: {'User-Agent': 'TravelMateApp/1.0'},
+    );
+    return response.statusCode == 200
+        ? json.decode(utf8.decode(response.bodyBytes))
+        : [];
   }
 
-  Future<List<Place>> _fetchFromNominatim(String query, {String? category, double? lat, double? lon, double radius = 25.0}) async {
+  Future<List<Place>> _fetchFromNominatim(
+    String query, {
+    String? category,
+    double? lat,
+    double? lon,
+    double radius = 25.0,
+  }) async {
     String effectiveQuery = query;
     if (category != null) {
       String catName = _mapCategoryToKeyword(category);
@@ -141,13 +170,17 @@ class SearchService {
     if (lat != null && lon != null) {
       // Tính toán viewbox xấp xỉ theo bán kính (1 độ ~ 111km)
       final offset = radius / 111.0;
-      params['viewbox'] = "${lon - offset},${lat + offset},${lon + offset},${lat - offset}";
+      params['viewbox'] =
+          "${lon - offset},${lat + offset},${lon + offset},${lat - offset}";
       params['bounded'] = '1';
     }
 
     final url = Uri.https('nominatim.openstreetmap.org', '/search', params);
-    final response = await http.get(url, headers: {'User-Agent': 'TravelMateApp/1.0'});
-    
+    final response = await http.get(
+      url,
+      headers: {'User-Agent': 'TravelMateApp/1.0'},
+    );
+
     if (response.statusCode == 200) {
       final List data = json.decode(utf8.decode(response.bodyBytes));
       return data.map((item) => Place.fromNominatim(item)).toList();
@@ -157,18 +190,30 @@ class SearchService {
 
   String _mapCategoryToKeyword(String category) {
     switch (category) {
-      case 'hotel': return 'khách sạn';
-      case 'restaurant': return 'nhà hàng';
-      case 'cafe': return 'cà phê';
-      case 'tourism': return 'điểm du lịch';
-      default: return category;
+      case 'hotel':
+        return 'khách sạn';
+      case 'restaurant':
+        return 'nhà hàng';
+      case 'cafe':
+        return 'cà phê';
+      case 'tourism':
+        return 'điểm du lịch';
+      default:
+        return category;
     }
   }
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const p = 0.017453292519943295;
     const c = cos;
-    final a = 0.5 - c((lat2 - lat1) * p) / 2 +
+    final a =
+        0.5 -
+        c((lat2 - lat1) * p) / 2 +
         c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a));
   }

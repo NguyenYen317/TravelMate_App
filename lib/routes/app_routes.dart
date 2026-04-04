@@ -7,6 +7,9 @@ import '../features/expense/screens/expense_screen.dart';
 import '../features/home/screens/main_screen.dart';
 
 class AppRoutes {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static const String authGate = '/';
   static const String login = '/login';
   static const String register = '/register';

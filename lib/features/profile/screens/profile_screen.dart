@@ -65,7 +65,7 @@ class ProfileScreen extends StatelessWidget {
                   radius: 35,
                   backgroundColor: Theme.of(
                     context,
-                  ).primaryColor.withOpacity(0.1),
+                  ).primaryColor.withValues(alpha: 0.1),
                   child: const Icon(Icons.person, size: 40, color: Colors.blue),
                 ),
                 const SizedBox(width: 16),
@@ -158,17 +158,26 @@ class ProfileScreen extends StatelessWidget {
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: p.imageUrl != null
-                                ? Image.network(
-                                    p.imageUrl!,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: Colors.grey[200],
-                                    ),
-                                  )
+                                ? (p.imageUrl!.startsWith('assets/')
+                                      ? Image.asset(
+                                          p.imageUrl!,
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.network(
+                                          p.imageUrl!,
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    width: 50,
+                                                    height: 50,
+                                                    color: Colors.grey[200],
+                                                  ),
+                                        ))
                                 : Container(
                                     width: 50,
                                     height: 50,
