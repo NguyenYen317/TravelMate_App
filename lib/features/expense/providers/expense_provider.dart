@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'dart:math';
 
+import '../expense_service.dart';
 import '../models/expense_item.dart';
 
 class ExpenseProvider extends ChangeNotifier {
-  ExpenseProvider() {
+  ExpenseProvider({ExpenseService? expenseService})
+    : _expenseService = expenseService ?? ExpenseService() {
     _init();
   }
 
   static const String _boxName = 'expense_box';
   static const String _expenseKey = 'expenses';
 
+  final ExpenseService _expenseService;
   final List<ExpenseItem> _allExpenses = [];
   bool _isReady = false;
   DateTime? _filterDate;
@@ -73,9 +76,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   double totalByTrip(String tripId) {
-    return filteredExpensesByTrip(
-      tripId,
-    ).fold<double>(0, (sum, item) => sum + item.amount);
+    return expensesByTrip(tripId).fold<double>(0, (sum, item) => sum + item.amount);
   }
 
   Future<void> addExpense({
@@ -86,19 +87,20 @@ class ExpenseProvider extends ChangeNotifier {
     required DateTime date,
     String? note,
   }) async {
-    _allExpenses.add(
-      ExpenseItem(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        tripId: tripId,
-        title: title,
-        amount: amount,
-        type: type,
-        date: date,
-        note: note == null || note.trim().isEmpty ? null : note.trim(),
-      ),
+    final created = ExpenseItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      tripId: tripId,
+      title: title,
+      amount: amount,
+      type: type,
+      date: date,
+      note: note == null || note.trim().isEmpty ? null : note.trim(),
     );
+
+    _allExpenses.add(created);
     await _persist();
     notifyListeners();
+    await _expenseService.addExpenseToFirebase(created);
   }
 
   Future<void> updateExpense({
@@ -115,28 +117,44 @@ class ExpenseProvider extends ChangeNotifier {
     }
 
     final current = _allExpenses[index];
-    _allExpenses[index] = current.copyWith(
+    final updated = current.copyWith(
       title: title,
       amount: amount,
       type: type,
       date: date,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
     );
-
+    _allExpenses[index] = updated;
     await _persist();
     notifyListeners();
+    await _expenseService.updateExpenseInFirebase(
+      before: current,
+      after: updated,
+    );
   }
 
   Future<void> deleteExpense(String expenseId) async {
-    _allExpenses.removeWhere((item) => item.id == expenseId);
+    final index = _allExpenses.indexWhere((item) => item.id == expenseId);
+    if (index < 0) {
+      return;
+    }
+    final removed = _allExpenses.removeAt(index);
     await _persist();
     notifyListeners();
+    await _expenseService.deleteExpenseFromFirebase(removed);
   }
 
   Future<void> deleteExpensesByTrip(String tripId) async {
+    final removed = _allExpenses
+        .where((item) => item.tripId == tripId)
+        .toList(growable: false);
     _allExpenses.removeWhere((item) => item.tripId == tripId);
     await _persist();
     notifyListeners();
+    await _expenseService.deleteTripExpensesFromFirebase(
+      tripId: tripId,
+      expenses: removed,
+    );
   }
 
   Future<void> seedRandomExpensesIfEmpty({

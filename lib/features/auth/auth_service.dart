@@ -62,6 +62,7 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: <String>['email']);
 
   bool _isFirebaseAvailable = false;
+  bool get isFirebaseAvailable => _isFirebaseAvailable;
 
   void setFirebaseAvailability(bool value) {
     _isFirebaseAvailable = value;
