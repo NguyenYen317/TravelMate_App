@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'ai_planner_service.dart';
+import 'models/ai_chat_models.dart';
 import 'models/ai_planner_models.dart';
 
 class AIProvider extends ChangeNotifier {
@@ -12,15 +13,21 @@ class AIProvider extends ChangeNotifier {
   PlannerResult? _lastResult;
   bool _isLoading = false;
   String? _error;
+  final List<AIChatMessage> _chatMessages = <AIChatMessage>[];
+  bool _isChatLoading = false;
+  String? _chatError;
 
   PlannerResult? get lastResult => _lastResult;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  List<AIChatMessage> get chatMessages => List.unmodifiable(_chatMessages);
+  bool get isChatLoading => _isChatLoading;
+  String? get chatError => _chatError;
 
   Future<bool> generatePlanner(String input) async {
     final query = input.trim();
     if (query.isEmpty) {
-      _error = 'Vui lòng nhập yêu cầu, ví dụ: Đà Nẵng 3 ngày.';
+      _error = 'Vui long nhap yeu cau, vi du: Da Nang 3 ngay.';
       _lastResult = null;
       notifyListeners();
       return false;
@@ -48,6 +55,58 @@ class AIProvider extends ChangeNotifier {
   void clearResult() {
     _lastResult = null;
     _error = null;
+    notifyListeners();
+  }
+
+  Future<void> sendChatMessage(String input) async {
+    final query = input.trim();
+    if (query.isEmpty || _isChatLoading) {
+      return;
+    }
+
+    _chatMessages.add(
+      AIChatMessage(
+        role: AIChatRole.user,
+        text: query,
+        createdAt: DateTime.now(),
+      ),
+    );
+    _chatError = null;
+    _isChatLoading = true;
+    notifyListeners();
+
+    try {
+      final reply = await _plannerService.generateChatReply(
+        userInput: query,
+        history: _chatMessages,
+      );
+      _chatMessages.add(
+        AIChatMessage(
+          role: AIChatRole.bot,
+          text: reply,
+          createdAt: DateTime.now(),
+        ),
+      );
+      _chatError = null;
+    } catch (error) {
+      _chatError = error.toString();
+      _chatMessages.add(
+        AIChatMessage(
+          role: AIChatRole.bot,
+          text: 'Xin loi, minh dang gap loi ket noi. Ban thu lai sau nhe.',
+          createdAt: DateTime.now(),
+        ),
+      );
+    } finally {
+      _isChatLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearChat() {
+    _chatMessages.clear();
+    _chatError = null;
+    _isChatLoading = false;
     notifyListeners();
   }
 }

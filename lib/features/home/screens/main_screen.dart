@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/app_provider.dart';
+import '../../community/screens/ai_chat_tab.dart';
 import '../../community/screens/community_screen.dart';
 import '../../notification/notification_service.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -31,6 +32,8 @@ class _MainScreenState extends State<MainScreen> {
   Timer? _pollTimer;
   OverlayEntry? _bannerEntry;
   Timer? _bannerAutoCloseTimer;
+  static const double _chatBubbleSize = 58;
+  Offset? _chatBubbleOffset;
 
   @override
   void initState() {
@@ -180,16 +183,84 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final appProvider = Provider.of<AppProvider>(context);
+    final currentIndex = appProvider.currentTabIndex.clamp(
+      0,
+      _pages.length - 1,
+    );
+    final media = MediaQuery.of(context);
+    final size = media.size;
+    final safeTop = media.padding.top;
+    final safeBottom = media.padding.bottom;
+
+    _chatBubbleOffset ??= Offset(
+      size.width - _chatBubbleSize - 20,
+      size.height - _chatBubbleSize - safeBottom - 140,
+    );
+
+    final clampedX = _chatBubbleOffset!.dx.clamp(
+      8.0,
+      size.width - _chatBubbleSize - 8,
+    );
+    final clampedY = _chatBubbleOffset!.dy.clamp(
+      safeTop + 8,
+      size.height - _chatBubbleSize - safeBottom - 84,
+    );
+    _chatBubbleOffset = Offset(clampedX, clampedY);
 
     return Scaffold(
-      body: IndexedStack(index: appProvider.currentTabIndex, children: _pages),
+      body: Stack(
+        children: [
+          IndexedStack(index: currentIndex, children: _pages),
+          Positioned(
+            left: _chatBubbleOffset!.dx,
+            top: _chatBubbleOffset!.dy,
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  final newDx = (_chatBubbleOffset!.dx + details.delta.dx)
+                      .clamp(8.0, size.width - _chatBubbleSize - 8);
+                  final newDy = (_chatBubbleOffset!.dy + details.delta.dy)
+                      .clamp(
+                        safeTop + 8,
+                        size.height - _chatBubbleSize - safeBottom - 84,
+                      );
+                  _chatBubbleOffset = Offset(newDx, newDy);
+                });
+              },
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(99),
+                  onTap: _openChatbotSheet,
+                  child: Container(
+                    width: _chatBubbleSize,
+                    height: _chatBubbleSize,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Icon(Icons.smart_toy, color: colorScheme.onPrimary),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
         ),
         child: BottomNavigationBar(
-          currentIndex: appProvider.currentTabIndex,
+          currentIndex: currentIndex,
           onTap: appProvider.setTab,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.transparent,
@@ -214,8 +285,8 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Chuyến đi',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.smart_toy_outlined),
-              activeIcon: Icon(Icons.smart_toy),
+              icon: Icon(Icons.auto_awesome_outlined),
+              activeIcon: Icon(Icons.auto_awesome),
               label: 'AI gợi ý',
             ),
             BottomNavigationBarItem(
@@ -235,5 +306,53 @@ class _MainScreenState extends State<MainScreen> {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$day/$month/${value.year} $hour:$minute';
+  }
+
+  Future<void> _openChatbotSheet() async {
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        final media = MediaQuery.of(context);
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: SizedBox(
+            height: media.size.height * 0.82,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 6, 2),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Chat Bot',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Đóng',
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                const Expanded(child: AIChatTab(autofocusInput: true)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

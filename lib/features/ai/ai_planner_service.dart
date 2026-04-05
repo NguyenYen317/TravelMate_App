@@ -1,9 +1,10 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
 import '../../core/constants/app_constants.dart';
+import 'models/ai_chat_models.dart';
 import 'models/ai_planner_models.dart';
 
 class AIPlannerService {
@@ -17,6 +18,17 @@ class AIPlannerService {
       return _generateWithOllama(rawInput.trim());
     }
     return _generateWithGemini(rawInput.trim());
+  }
+
+  Future<String> generateChatReply({
+    required String userInput,
+    required List<AIChatMessage> history,
+  }) async {
+    final provider = AppConstants.aiProvider.trim().toLowerCase();
+    if (provider == 'ollama') {
+      return _chatWithOllama(userInput: userInput, history: history);
+    }
+    return _chatWithGemini(userInput: userInput, history: history);
   }
 
   Future<PlannerResult> _generateWithGemini(String userInput) async {
@@ -33,23 +45,25 @@ class AIPlannerService {
       'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
     );
 
-    final response = await _client.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt},
+    final response = await _client
+        .post(
+          uri,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
             ],
-          },
-        ],
-        'generationConfig': {
-          'temperature': 0.2,
-          'responseMimeType': 'application/json',
-        },
-      }),
-    );
+            'generationConfig': {
+              'temperature': 0.2,
+              'responseMimeType': 'application/json',
+            },
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AIPlannerException(
@@ -78,17 +92,19 @@ class AIPlannerService {
     final prompt = _buildPrompt(userInput);
     final uri = Uri.parse('$baseUrl/api/generate');
 
-    final response = await _client.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'model': model,
-        'prompt': prompt,
-        'format': 'json',
-        'stream': false,
-        'options': {'temperature': 0.2},
-      }),
-    );
+    final response = await _client
+        .post(
+          uri,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'model': model,
+            'prompt': prompt,
+            'format': 'json',
+            'stream': false,
+            'options': {'temperature': 0.2},
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AIPlannerException(
@@ -109,7 +125,9 @@ class AIPlannerService {
     final cleanedJson = _stripCodeFence(rawText);
     final payload = jsonDecode(cleanedJson);
     if (payload is! Map<String, dynamic>) {
-      throw const AIPlannerException('Định dạng JSON không đúng schema mong đợi.');
+      throw const AIPlannerException(
+        'Định dạng JSON không đúng schema mong đợi.',
+      );
     }
     return _ensureNonEmptyItinerary(PlannerResult.fromJson(payload));
   }
@@ -134,8 +152,7 @@ class AIPlannerService {
         title: dayPlan.title ?? 'Khám phá tự do',
         items: [_randomFallbackItem(result.destination, random)],
       );
-    }).toList()
-      ..sort((a, b) => a.day.compareTo(b.day));
+    }).toList()..sort((a, b) => a.day.compareTo(b.day));
 
     return PlannerResult(
       destination: result.destination,
@@ -247,6 +264,129 @@ $userInput
     }
 
     return lines.sublist(1, lines.length - 1).join('\n').trim();
+  }
+
+  Future<String> _chatWithGemini({
+    required String userInput,
+    required List<AIChatMessage> history,
+  }) async {
+    final apiKey = AppConstants.geminiApiKey.trim();
+    if (apiKey.isEmpty) {
+      throw const AIPlannerException(
+        'Thieu GEMINI_API_KEY de su dung chatbot.',
+      );
+    }
+
+    final model = AppConstants.geminiModel.trim();
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+    );
+    final prompt = _buildChatPrompt(userInput: userInput, history: history);
+
+    final response = await _client
+        .post(
+          uri,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt},
+                ],
+              },
+            ],
+            'generationConfig': {'temperature': 0.5, 'maxOutputTokens': 600},
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AIPlannerException(
+        'Gemini API loi (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawText = _extractGeminiText(decoded);
+    if (rawText == null || rawText.trim().isEmpty) {
+      throw const AIPlannerException(
+        'Chatbot khong nhan duoc noi dung tra ve.',
+      );
+    }
+    return rawText.trim();
+  }
+
+  Future<String> _chatWithOllama({
+    required String userInput,
+    required List<AIChatMessage> history,
+  }) async {
+    final baseUrl = AppConstants.ollamaBaseUrl.trim();
+    if (baseUrl.isEmpty) {
+      throw const AIPlannerException(
+        'Thieu OLLAMA_BASE_URL de su dung chatbot.',
+      );
+    }
+
+    final model = AppConstants.ollamaModel.trim();
+    final uri = Uri.parse('$baseUrl/api/generate');
+    final prompt = _buildChatPrompt(userInput: userInput, history: history);
+
+    final response = await _client
+        .post(
+          uri,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'model': model,
+            'prompt': prompt,
+            'stream': false,
+            'options': {'temperature': 0.5},
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AIPlannerException(
+        'Ollama API loi (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawText = decoded['response']?.toString().trim() ?? '';
+    if (rawText.isEmpty) {
+      throw const AIPlannerException(
+        'Chatbot khong nhan duoc noi dung tra ve.',
+      );
+    }
+    return rawText;
+  }
+
+  String _buildChatPrompt({
+    required String userInput,
+    required List<AIChatMessage> history,
+  }) {
+    final recent = history.length > 10
+        ? history.sublist(history.length - 10)
+        : history;
+    final historyText = recent
+        .map(
+          (item) =>
+              '${item.role == AIChatRole.user ? 'User' : 'Bot'}: ${item.text}',
+        )
+        .join('\n');
+
+    return '''
+Ban la tro ly du lich cua app TravelMate.
+- Tra loi bang tieng Viet, gon gang, de hieu.
+- Neu nguoi dung hoi lich trinh, de xuat tung buoc ro rang.
+- Neu khong du thong tin, hoi lai 1-2 cau de lam ro.
+- Khong tao thong tin nguy hiem.
+
+Hoi thoai gan day:
+$historyText
+
+Tin nhan moi cua user:
+$userInput
+''';
   }
 }
 
