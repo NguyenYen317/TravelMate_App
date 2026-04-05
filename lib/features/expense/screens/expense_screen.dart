@@ -311,7 +311,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
-            _buildReceiptScanActions(context, provider, trip),
+            _buildReceiptScanActions(context, trip),
             if (_isScanning) ...[
               const SizedBox(height: 10),
               const LinearProgressIndicator(),
@@ -413,8 +413,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   _expenseDate = null;
                   _type = 'Food';
                 });
+                _showSnack(
+                  context,
+                  'Da luu chi phi va cong vao tong chi phi chuyen di.',
+                );
               },
-              child: const Text('Thêm chi phí'),
+              child: const Text('Lưu'),
             ),
           ],
         ),
@@ -424,7 +428,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   Widget _buildReceiptScanActions(
     BuildContext context,
-    ExpenseProvider provider,
     Trip trip,
   ) {
     return Wrap(
@@ -436,19 +439,17 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               ? null
               : () => _scanReceiptFromSource(
                   context,
-                  provider,
                   trip,
                   ImageSource.camera,
                 ),
           icon: const Icon(Icons.photo_camera_outlined),
-          label: const Text('Chụp từ camera'),
+          label: const Text('Chup hoa don'),
         ),
         OutlinedButton.icon(
           onPressed: _isScanning
               ? null
               : () => _scanReceiptFromSource(
                   context,
-                  provider,
                   trip,
                   ImageSource.gallery,
                 ),
@@ -606,7 +607,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   Future<void> _scanReceiptFromSource(
     BuildContext context,
-    ExpenseProvider provider,
     Trip trip,
     ImageSource source,
   ) async {
@@ -615,282 +615,106 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       return;
     }
 
-    await _showReceiptPreviewAndScan(context, provider, trip, pickedImage);
-  }
+    setState(() {
+      _isScanning = true;
+    });
 
-  Future<void> _showReceiptPreviewAndScan(
-    BuildContext context,
-    ExpenseProvider provider,
-    Trip trip,
-    XFile pickedImage,
-  ) async {
-    ReceiptScanResult? scannedResult;
+    try {
+      final recognized = await _receiptService.scanReceiptByPath(pickedImage.path);
+      final cloudUrl = await _receiptService.uploadToCloudinary(pickedImage);
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        var isProcessing = false;
-        return StatefulBuilder(
-          builder: (localContext, setDialogState) {
-            return AlertDialog(
-              title: const Text('Xem trước hóa đơn'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        File(pickedImage.path),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text('Kiểm tra ảnh rõ nét trước khi quét OCR.'),
-                    if (isProcessing) ...[
-                      const SizedBox(height: 10),
-                      const Center(child: CircularProgressIndicator()),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isProcessing
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Hủy'),
-                ),
-                FilledButton.icon(
-                  onPressed: isProcessing
-                      ? null
-                      : () async {
-                          setDialogState(() {
-                            isProcessing = true;
-                          });
-                          setState(() {
-                            _isScanning = true;
-                          });
-
-                          try {
-                            final recognized = await _receiptService
-                                .scanReceiptByPath(pickedImage.path);
-                            final cloudUrl = await _receiptService
-                                .uploadToCloudinary(pickedImage);
-
-                            scannedResult = ReceiptScanResult(
-                              rawText: recognized.rawText,
-                              storeName: recognized.storeName,
-                              totalAmount: recognized.totalAmount,
-                              date: recognized.date,
-                              summary: recognized.summary,
-                              suggestedType: recognized.suggestedType,
-                              cloudinaryUrl: cloudUrl,
-                            );
-
-                            if (localContext.mounted) {
-                              Navigator.of(dialogContext).pop();
-                            }
-                          } finally {
-                            if (mounted) {
-                              setState(() {
-                                _isScanning = false;
-                              });
-                            }
-                            if (localContext.mounted) {
-                              setDialogState(() {
-                                isProcessing = false;
-                              });
-                            }
-                          }
-                        },
-                  icon: const Icon(Icons.document_scanner_outlined),
-                  label: const Text('Bắt đầu quét'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (!mounted || scannedResult == null) {
-      return;
-    }
-
-    final result = scannedResult!;
-    if (result.rawText.trim().isEmpty) {
-      _showSnack(
-        context,
-        'Không nhận diện được nội dung hóa đơn. Hãy thử ảnh rõ hơn.',
+      final result = ReceiptScanResult(
+        rawText: recognized.rawText,
+        storeName: recognized.storeName,
+        totalAmount: recognized.totalAmount,
+        date: recognized.date,
+        summary: recognized.summary,
+        suggestedType: recognized.suggestedType,
+        cloudinaryUrl: cloudUrl,
       );
-      return;
-    }
 
-    await _showScannedReceiptDialog(context, provider, trip, result);
+      if (!mounted) {
+        return;
+      }
+
+      if (result.rawText.trim().isEmpty) {
+        _showSnack(
+          context,
+          'Khong nhan dien duoc text tren hoa don. Vui long chup lai ro hon.',
+        );
+        return;
+      }
+
+      _applyScannedReceiptResult(context, trip, result);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showSnack(context, 'Quet OCR that bai. Vui long thu lai.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+        });
+      }
+    }
   }
 
-  Future<void> _showScannedReceiptDialog(
+  void _applyScannedReceiptResult(
     BuildContext context,
-    ExpenseProvider provider,
     Trip trip,
     ReceiptScanResult result,
-  ) async {
-    final titleCtrl = TextEditingController(
-      text: (result.storeName ?? result.summary ?? 'Hóa đơn').trim(),
-    );
-    final amountCtrl = TextEditingController(
-      text: result.totalAmount == null
-          ? ''
-          : result.totalAmount!.toStringAsFixed(0),
-    );
+  ) {
+    final amount = result.totalAmount;
+    if (amount != null && amount > 0) {
+      _amountCtrl.text = amount.toStringAsFixed(0);
+    }
 
-    final noteBuffer = StringBuffer();
+    if (_titleCtrl.text.trim().isEmpty) {
+      _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hoa don').trim();
+    }
+
+    final noteParts = <String>[];
     if (result.summary != null && result.summary!.trim().isNotEmpty) {
-      noteBuffer.write(result.summary!.trim());
+      noteParts.add(result.summary!.trim());
+    } else if (result.rawText.trim().isNotEmpty) {
+      noteParts.add(result.rawText.trim().split('\n').take(3).join(' | '));
     }
     if (result.cloudinaryUrl != null && result.cloudinaryUrl!.isNotEmpty) {
-      if (noteBuffer.isNotEmpty) {
-        noteBuffer.write('\n');
-      }
-      noteBuffer.write('Ảnh hóa đơn: ${result.cloudinaryUrl}');
+      noteParts.add('Anh hoa don: ${result.cloudinaryUrl}');
     }
-    final noteCtrl = TextEditingController(text: noteBuffer.toString());
 
-    var type = result.suggestedType ?? 'Other';
-    if (!ExpenseProvider.types.contains(type) || type == 'All') {
-      type = 'Other';
+    if (noteParts.isNotEmpty && _noteCtrl.text.trim().isEmpty) {
+      _noteCtrl.text = noteParts.join('\n');
     }
-    var date = _clampDate(
-      result.date ?? _effectiveExpenseDate(trip),
+
+    final suggestedType = result.suggestedType;
+    if (suggestedType != null &&
+        ExpenseProvider.types.contains(suggestedType) &&
+        suggestedType != 'All') {
+      _type = suggestedType;
+    }
+
+    _expenseDate = _clampDate(
+      result.date ?? (_expenseDate ?? DateTime.now()),
       trip.startDate,
       trip.endDate,
     );
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (localContext, setDialogState) {
-            return AlertDialog(
-              title: const Text('Thông tin hóa đơn nhận diện'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: titleCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Tên cửa hàng / nội dung',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: amountCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,\s]')),
-                      ],
-                      decoration: const InputDecoration(labelText: 'Tổng tiền'),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      initialValue: type,
-                      decoration: const InputDecoration(
-                        labelText: 'Phân loại chi phí',
-                      ),
-                      items: ExpenseProvider.types
-                          .where((value) => value != 'All')
-                          .map(
-                            (value) => DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(_typeLabel(value)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() {
-                            type = value;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: noteCtrl,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Nội dung hóa đơn / ghi chú',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: localContext,
-                          firstDate: _onlyDate(trip.startDate),
-                          lastDate: _onlyDate(trip.endDate),
-                          initialDate: date,
-                        );
-                        if (picked != null) {
-                          setDialogState(() {
-                            date = picked;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.event),
-                      label: Text(_fmtDate(date)),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Bỏ qua'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final title = titleCtrl.text.trim();
-                    final amount = _parseAmount(amountCtrl.text);
-                    if (title.isEmpty || amount == null || amount <= 0) {
-                      _showSnack(
-                        context,
-                        'Kiểm tra lại tên cửa hàng/nội dung và tổng tiền.',
-                      );
-                      return;
-                    }
+    setState(() {});
 
-                    _titleCtrl.text = title;
-                    _amountCtrl.text = amount.toStringAsFixed(0);
-                    _noteCtrl.text = noteCtrl.text.trim();
-                    setState(() {
-                      _type = type;
-                      _expenseDate = date;
-                    });
-                    Navigator.of(dialogContext).pop();
-                    _showSnack(
-                      context,
-                      'Đã điền dữ liệu OCR vào form. Kiểm tra và bấm "Thêm chi phí" để lưu.',
-                    );
-                  },
-                  child: const Text('Áp dụng vào biểu mẫu'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    if (amount == null || amount <= 0) {
+      _showSnack(
+        context,
+        'Da quet xong nhung chua tim thay Tong tien. Vui long nhap tay.',
+      );
+      return;
+    }
+
+    _showSnack(
+      context,
+      'Da dien Tong tien vao form. Kiem tra lai va bam "Luu".',
     );
-
-    titleCtrl.dispose();
-    amountCtrl.dispose();
-    noteCtrl.dispose();
   }
 
   Future<void> _showEditExpenseSheet(

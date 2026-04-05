@@ -1,5 +1,7 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+import 'receipt_amount_parser.dart';
+
 class OCRExtractedData {
   OCRExtractedData({
     required this.rawText,
@@ -39,7 +41,8 @@ class OCRService {
     return OCRExtractedData(
       rawText: rawText,
       storeName: _extractStoreName(lines),
-      totalAmount: _extractTotalAmount(lines),
+      totalAmount:
+          ReceiptAmountParser.extractAmount(rawText) ?? _extractTotalAmount(lines),
       date: _extractDate(rawText),
       summary: _extractSummary(lines),
       suggestedType: _classifyExpenseType(rawText),
