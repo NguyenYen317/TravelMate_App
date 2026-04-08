@@ -20,7 +20,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   final TextEditingController _tripTitleCtrl = TextEditingController();
   final TextEditingController _locationCtrl = TextEditingController();
   final TextEditingController _locationNoteCtrl = TextEditingController();
-  final Set<String> _selectedFavoritePlaceIds = <String>{};
+  String? _selectedFavoritePlaceId;
 
   DateTimeRange? _tripRange;
   TimeOfDay? _tripStartTime;
@@ -51,11 +51,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
           body: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
-              _buildCreateTripCard(
-                context,
-                tripProvider,
-                searchProvider.favoritePlaces,
-              ),
+              _buildCreateTripCard(context, tripProvider),
               const SizedBox(height: 12),
               if (tripProvider.trips.isNotEmpty)
                 _buildTripSelector(context, tripProvider, expenseProvider),
@@ -75,6 +71,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   tripProvider,
                   activeTrip,
                   selectedDate,
+                  searchProvider.favoritePlaces,
                 ),
                 const SizedBox(height: 12),
                 _buildTimelineCard(
@@ -102,10 +99,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   Widget _buildCreateTripCard(
     BuildContext context,
     TripPlannerProvider provider,
-    List<Place> favoritePlaces,
   ) {
-    final selectedFavoritePlaces = _selectedFavoritePlaces(favoritePlaces);
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -203,61 +197,6 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            if (favoritePlaces.isEmpty)
-              Text(
-                'Thêm địa điểm vào Yêu thích ở tab Khám phá để tạo chuyến đi nhanh.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              )
-            else ...[
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final selectedIds = await _showFavoritePlacesPicker(
-                    context,
-                    favoritePlaces,
-                    initialSelection: selectedFavoritePlaces
-                        .map((place) => place.id)
-                        .toSet(),
-                  );
-                  if (selectedIds == null) {
-                    return;
-                  }
-                  setState(() {
-                    _selectedFavoritePlaceIds
-                      ..clear()
-                      ..addAll(selectedIds);
-                  });
-                },
-                icon: const Icon(Icons.favorite_outline),
-                label: Text(
-                  selectedFavoritePlaces.isEmpty
-                      ? 'Chọn địa điểm từ Yêu thích'
-                      : 'Đã chọn ${selectedFavoritePlaces.length} địa điểm',
-                ),
-              ),
-              if (selectedFavoritePlaces.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: selectedFavoritePlaces
-                      .map(
-                        (place) => InputChip(
-                          label: Text(place.name),
-                          onDeleted: () {
-                            setState(() {
-                              _selectedFavoritePlaceIds.remove(place.id);
-                            });
-                          },
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ],
-            const SizedBox(height: 10),
             FilledButton(
               onPressed: () async {
                 final title = _tripTitleCtrl.text.trim();
@@ -268,10 +207,6 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   );
                   return;
                 }
-                final initialLocations = _buildLocationsFromFavoritePlaces(
-                  selectedFavoritePlaces,
-                  _tripRange!.start,
-                );
                 await provider.createTrip(
                   title: title,
                   start: _tripRange!.start,
@@ -282,14 +217,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   endMinuteOfDay: _tripEndTime == null
                       ? null
                       : (_tripEndTime!.hour * 60) + _tripEndTime!.minute,
-                  initialLocations: initialLocations,
                 );
                 _tripTitleCtrl.clear();
                 setState(() {
                   _tripRange = null;
                   _tripStartTime = null;
                   _tripEndTime = null;
-                  _selectedFavoritePlaceIds.clear();
                 });
               },
               child: const Text('Tạo chuyến đi'),
@@ -300,50 +233,29 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     );
   }
 
-  List<Place> _selectedFavoritePlaces(List<Place> favoritePlaces) {
-    return favoritePlaces
-        .where((place) => _selectedFavoritePlaceIds.contains(place.id))
-        .toList();
+  Place? _selectedFavoritePlace(List<Place> favoritePlaces) {
+    final selectedId = _selectedFavoritePlaceId;
+    if (selectedId == null || selectedId.isEmpty) {
+      return null;
+    }
+    for (final place in favoritePlaces) {
+      if (place.id == selectedId) {
+        return place;
+      }
+    }
+    return null;
   }
 
-  List<TripLocation> _buildLocationsFromFavoritePlaces(
-    List<Place> favoritePlaces,
-    DateTime tripStart,
-  ) {
-    final normalizedStart = DateTime(
-      tripStart.year,
-      tripStart.month,
-      tripStart.day,
-    );
-    final seed = DateTime.now().microsecondsSinceEpoch;
-    return favoritePlaces
-        .asMap()
-        .entries
-        .map((entry) {
-          final place = entry.value;
-          final note = place.address.trim();
-          return TripLocation(
-            id: 'fav_${seed}_${entry.key}',
-            name: place.name.trim(),
-            day: normalizedStart,
-            note: note.isEmpty ? null : note,
-          );
-        })
-        .where((location) => location.name.isNotEmpty)
-        .toList();
-  }
-
-  Future<Set<String>?> _showFavoritePlacesPicker(
+  Future<String?> _showFavoritePlacesPicker(
     BuildContext context,
     List<Place> favoritePlaces, {
-    required Set<String> initialSelection,
+    required String? initialSelection,
   }) {
-    final selected = Set<String>.from(initialSelection);
-    return showModalBottomSheet<Set<String>>(
+    var selectedId = initialSelection;
+    return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
         return SafeArea(
           child: StatefulBuilder(
             builder: (context, setModalState) {
@@ -362,22 +274,16 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        '${selected.length}/${favoritePlaces.length} địa điểm được chọn',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      const Text('Chọn 1 địa điểm để điền nhanh tên.'),
                       const SizedBox(height: 10),
                       Expanded(
                         child: ListView.builder(
                           itemCount: favoritePlaces.length,
                           itemBuilder: (context, index) {
                             final place = favoritePlaces[index];
-                            final checked = selected.contains(place.id);
-                            return CheckboxListTile(
-                              value: checked,
+                            return RadioListTile<String>(
+                              value: place.id,
+                              groupValue: selectedId,
                               title: Text(place.name),
                               subtitle: Text(
                                 place.address,
@@ -386,11 +292,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               ),
                               onChanged: (value) {
                                 setModalState(() {
-                                  if (value == true) {
-                                    selected.add(place.id);
-                                  } else {
-                                    selected.remove(place.id);
-                                  }
+                                  selectedId = value;
                                 });
                               },
                             );
@@ -403,7 +305,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                           TextButton(
                             onPressed: () {
                               setModalState(() {
-                                selected.clear();
+                                selectedId = null;
                               });
                             },
                             child: const Text('Bỏ chọn'),
@@ -415,9 +317,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                           ),
                           const SizedBox(width: 8),
                           FilledButton(
-                            onPressed: () => Navigator.of(
-                              sheetContext,
-                            ).pop(Set<String>.from(selected)),
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(selectedId),
                             child: const Text('Xác nhận'),
                           ),
                         ],
@@ -584,7 +485,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     TripPlannerProvider provider,
     Trip trip,
     DateTime selectedDate,
+    List<Place> favoritePlaces,
   ) {
+    final selectedFavoritePlace = _selectedFavoritePlace(favoritePlaces);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -595,6 +499,59 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               'Thêm địa điểm cho ${_fmtDate(selectedDate)}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
+            const SizedBox(height: 10),
+            if (favoritePlaces.isEmpty)
+              Text(
+                'Bạn chưa có địa điểm yêu thích. Hãy thêm ở tab Khám phá.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            else ...[
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final selectedId = await _showFavoritePlacesPicker(
+                    context,
+                    favoritePlaces,
+                    initialSelection: selectedFavoritePlace?.id,
+                  );
+                  if (!context.mounted) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedFavoritePlaceId = selectedId;
+                    final picked = _selectedFavoritePlace(favoritePlaces);
+                    if (picked != null) {
+                      _locationCtrl.text = picked.name;
+                    }
+                  });
+                },
+                icon: const Icon(Icons.favorite_outline),
+                label: Text(
+                  selectedFavoritePlace == null
+                      ? 'Chọn địa điểm từ Yêu thích'
+                      : 'Đã chọn: ${selectedFavoritePlace.name}',
+                ),
+              ),
+              if (selectedFavoritePlace != null) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    InputChip(
+                      label: Text(selectedFavoritePlace.name),
+                      onDeleted: () {
+                        setState(() {
+                          _selectedFavoritePlaceId = null;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ],
             const SizedBox(height: 10),
             TextField(
               controller: _locationCtrl,
@@ -658,6 +615,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                 _locationNoteCtrl.clear();
                 setState(() {
                   _locationTime = null;
+                  _selectedFavoritePlaceId = null;
                 });
               },
               child: const Text('Thêm địa điểm'),
