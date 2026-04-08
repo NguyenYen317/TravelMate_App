@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -850,9 +850,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (stfContext, setDialogState) {
             return AlertDialog(
               title: const Text('Chỉnh sửa chuyến đi'),
               content: SingleChildScrollView(
@@ -870,7 +871,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       onPressed: () async {
                         final now = DateTime.now();
                         final picked = await showDateRangePicker(
-                          context: context,
+                          context: stfContext,
                           firstDate: DateTime(now.year - 1),
                           lastDate: DateTime(now.year + 2),
                           initialDateRange: range,
@@ -900,7 +901,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                       minute: startMinuteOfDay! % 60,
                                     );
                               final picked = await showTimePicker(
-                                context: context,
+                                context: stfContext,
                                 initialTime: initial,
                               );
                               if (picked == null) {
@@ -930,7 +931,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                       minute: endMinuteOfDay! % 60,
                                     );
                               final picked = await showTimePicker(
-                                context: context,
+                                context: stfContext,
                                 initialTime: initial,
                               );
                               if (picked == null) {
@@ -966,16 +967,22 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       _showSnack(context, 'Nhập tên chuyến đi.');
                       return;
                     }
-                    await provider.updateTrip(
-                      tripId: trip.id,
-                      title: title,
-                      start: range.start,
-                      end: range.end,
-                      startMinuteOfDay: startMinuteOfDay,
-                      endMinuteOfDay: endMinuteOfDay,
-                    );
-                    if (context.mounted) {
-                      Navigator.of(dialogContext).pop();
+
+                    try {
+                      await provider.updateTrip(
+                        tripId: trip.id,
+                        title: title,
+                        start: range.start,
+                        end: range.end,
+                        startMinuteOfDay: startMinuteOfDay,
+                        endMinuteOfDay: endMinuteOfDay,
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                        _showSnack(context, 'Đã cập nhật chuyến đi.');
+                      }
+                    } catch (error) {
+                      _showSnack(context, error.toString());
                     }
                   },
                   child: const Text('Lưu'),
@@ -987,7 +994,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       },
     );
 
-    titleCtrl.dispose();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      titleCtrl.dispose();
+    });
   }
 
   Future<void> _showEditLocationDialog(
@@ -1003,9 +1012,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (stfContext, setDialogState) {
             return AlertDialog(
               title: const Text('Chỉnh sửa địa điểm'),
               content: SingleChildScrollView(
@@ -1027,7 +1037,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     OutlinedButton.icon(
                       onPressed: () async {
                         final picked = await showDatePicker(
-                          context: context,
+                          context: stfContext,
                           firstDate: trip.startDate,
                           lastDate: trip.endDate,
                           initialDate: day,
@@ -1052,7 +1062,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                 minute: minuteOfDay! % 60,
                               );
                         final picked = await showTimePicker(
-                          context: context,
+                          context: stfContext,
                           initialTime: initial,
                         );
                         if (picked == null) {
@@ -1080,16 +1090,22 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       _showSnack(context, 'Nhập tên địa điểm.');
                       return;
                     }
-                    await provider.updateLocation(
-                      tripId: trip.id,
-                      locationId: location.id,
-                      name: name,
-                      day: day,
-                      minuteOfDay: minuteOfDay,
-                      note: noteCtrl.text,
-                    );
-                    if (context.mounted) {
-                      Navigator.of(dialogContext).pop();
+
+                    try {
+                      await provider.updateLocation(
+                        tripId: trip.id,
+                        locationId: location.id,
+                        name: name,
+                        day: day,
+                        minuteOfDay: minuteOfDay,
+                        note: noteCtrl.text,
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                        _showSnack(context, 'Đã cập nhật địa điểm.');
+                      }
+                    } catch (error) {
+                      _showSnack(context, error.toString());
                     }
                   },
                   child: const Text('Lưu'),
@@ -1101,13 +1117,23 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       },
     );
 
-    nameCtrl.dispose();
-    noteCtrl.dispose();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      nameCtrl.dispose();
+      noteCtrl.dispose();
+    });
   }
 
   void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.maybeOf(context) ??
+          ScaffoldMessenger.maybeOf(this.context);
+      messenger?.showSnackBar(SnackBar(content: Text(message)));
+    });
   }
 }

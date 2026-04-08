@@ -55,6 +55,10 @@
 	<string>Main</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ung dung can camera de quet hoa don chi phi chuyen di.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ung dung can truy cap thu vien anh de dang bai trong Nhat ky cong dong.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ung dung can quyen luu anh de ho tro chia se noi dung.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

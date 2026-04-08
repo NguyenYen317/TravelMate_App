@@ -38,14 +38,20 @@ class SocialPost {
     );
   }
 
-  SocialPost copyWith({int? likeCount, int? commentCount}) {
+  SocialPost copyWith({
+    String? content,
+    String? imageUrl,
+    bool clearImage = false,
+    int? likeCount,
+    int? commentCount,
+  }) {
     return SocialPost(
       id: id,
       userId: userId,
       userName: userName,
       userAvatar: userAvatar,
-      content: content,
-      imageUrl: imageUrl,
+      content: content ?? this.content,
+      imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       createdAt: createdAt,

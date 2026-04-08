@@ -163,6 +163,55 @@ class SocialProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updatePost({
+    required String postId,
+    required AuthUser user,
+    required String content,
+    XFile? imageFile,
+    bool removeImage = false,
+  }) async {
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updated = await _socialService.updatePost(
+        postId: postId,
+        user: user,
+        content: content,
+        imageFile: imageFile,
+        removeImage: removeImage,
+      );
+      final index = _posts.indexWhere((post) => post.id == postId);
+      if (index >= 0) {
+        _posts[index] = updated;
+      }
+      notifyListeners();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deletePost({
+    required String postId,
+    required AuthUser user,
+  }) async {
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _socialService.deletePost(postId: postId, user: user);
+      _posts.removeWhere((post) => post.id == postId);
+      _likedByMe.remove(postId);
+      notifyListeners();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> _hydrateLikedStatus(String userId) async {
     final futures = _posts.map((post) async {
       final liked = await _socialService.hasUserLiked(

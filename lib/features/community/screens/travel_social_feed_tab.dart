@@ -1,4 +1,8 @@
+﻿import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../auth/auth_service.dart';
@@ -15,13 +19,46 @@ class TravelSocialFeedTab extends StatefulWidget {
 
 class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
   final TextEditingController _postCtrl = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
   bool _initialized = false;
   bool _showOnlyMine = false;
+  XFile? _selectedImage;
 
   @override
   void dispose() {
     _postCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPostImage(ImageSource source) async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 75,
+        maxWidth: 1280,
+        maxHeight: 1280,
+      );
+      if (!mounted || image == null) {
+        return;
+      }
+      setState(() {
+        _selectedImage = image;
+      });
+    } on PlatformException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể chọn ảnh: ${error.message ?? error.code}')),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể chọn ảnh. Vui lòng thử lại.')),
+      );
+    }
   }
 
   @override
@@ -72,7 +109,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                       Row(
                         children: [
                           ChoiceChip(
-                            label: const Text('Tat ca bai dang'),
+                            label: const Text('Tất cả bài đăng'),
                             selected: !_showOnlyMine,
                             onSelected: (_) {
                               setState(() {
@@ -82,7 +119,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                           ),
                           const SizedBox(width: 8),
                           ChoiceChip(
-                            label: const Text('Bai cua toi'),
+                            label: const Text('Bài của tôi'),
                             selected: _showOnlyMine,
                             onSelected: user == null
                                 ? null
@@ -109,6 +146,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                 }
 
                 final post = visiblePosts[adjustedIndex];
+                final canManage = user != null && post.userId == user.id;
                 return _SocialPostCard(
                   post: post,
                   isLikedByMe: socialProvider.isLikedByMe(post.id),
@@ -122,13 +160,19 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                     if (user == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Hay dang nhap de binh luan.'),
+                          content: Text('Hãy đăng nhập để bình luận.'),
                         ),
                       );
                       return;
                     }
-                    _openCommentsSheet(post, user);
+                    _openCommentsSheet(post, user, socialProvider);
                   },
+                  onEditTap: canManage
+                      ? () => _showEditPostSheet(post, user!, socialProvider)
+                      : null,
+                  onDeleteTap: canManage
+                      ? () => _confirmDeletePost(post, user!, socialProvider)
+                      : null,
                 );
               },
             ),
@@ -147,7 +191,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(12),
-          child: Text('Dang nhap de dang bai trong Nhat ky Cong dong.'),
+          child: Text('Đăng nhập để đăng bài trong Nhật ký cộng đồng.'),
         ),
       );
     }
@@ -159,7 +203,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Dang bai moi',
+              'Đăng bài mới',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
@@ -168,13 +212,62 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
               minLines: 2,
               maxLines: 5,
               decoration: const InputDecoration(
-                hintText: 'Viet cam nhan ve chuyen di...',
+                hintText: 'Viết cảm nhận về chuyến đi...',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
+            if (_selectedImage != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    Image(
+                      image: ResizeImage(
+                        FileImage(File(_selectedImage!.path)),
+                        width: 1080,
+                      ),
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) {
+                        return const SizedBox(
+                          height: 180,
+                          child: Center(child: Text('Không tải được ảnh xem trước')),
+                        );
+                      },
+                    ),
+                    IconButton.filled(
+                      onPressed: () {
+                        setState(() {
+                          _selectedImage = null;
+                        });
+                      },
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Bỏ ảnh',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
+                IconButton(
+                  onPressed: provider.isCreatingPost
+                      ? null
+                      : () => _pickPostImage(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  tooltip: 'Chọn ảnh từ thư viện',
+                ),
+                IconButton(
+                  onPressed: provider.isCreatingPost
+                      ? null
+                      : () => _pickPostImage(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  tooltip: 'Chụp ảnh',
+                ),
                 const Spacer(),
                 FilledButton(
                   onPressed: provider.isCreatingPost
@@ -185,15 +278,18 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                             await provider.createPost(
                               user: user,
                               content: _postCtrl.text,
-                              imageFile: null,
+                              imageFile: _selectedImage,
                             );
                             if (!mounted) {
                               return;
                             }
                             _postCtrl.clear();
+                            setState(() {
+                              _selectedImage = null;
+                            });
                             messenger.showSnackBar(
                               const SnackBar(
-                                content: Text('Dang bai thanh cong.'),
+                                content: Text('Đăng bài thành công.'),
                               ),
                             );
                           } catch (error) {
@@ -211,7 +307,7 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Dang bai'),
+                      : const Text('Đăng bài'),
                 ),
               ],
             ),
@@ -221,112 +317,211 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
     );
   }
 
-  Future<void> _openCommentsSheet(SocialPost post, AuthUser user) async {
-    final controller = TextEditingController();
-
-    await showModalBottomSheet<void>(
+  void _openCommentsSheet(SocialPost post, AuthUser user, SocialProvider provider) {
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (sheetContext) {
-        return Consumer<SocialProvider>(
-          builder: (context, provider, _) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 12,
-                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 12,
-              ),
-              child: SizedBox(
-                height: MediaQuery.of(sheetContext).size.height * 0.7,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Binh luan cong dong',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: StreamBuilder<List<SocialComment>>(
-                        stream: provider.watchComments(post.id),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+      builder: (context) => _CommentSheet(
+        post: post,
+        user: user,
+        provider: provider,
+      ),
+    );
+  }
 
-                          final items =
-                              snapshot.data ?? const <SocialComment>[];
-                          if (items.isEmpty) {
-                            return const Center(
-                              child: Text('Chua co binh luan.'),
-                            );
-                          }
+  void _showEditPostSheet(SocialPost post, AuthUser user, SocialProvider provider) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _EditPostSheet(
+        post: post,
+        user: user,
+        provider: provider,
+      ),
+    );
+  }
 
-                          return ListView.separated(
-                            itemCount: items.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 8),
-                            itemBuilder: (context, index) {
-                              final item = items[index];
-                              return ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(item.userName),
-                                subtitle: Text(item.text),
-                                trailing: Text(
-                                  _fmtDate(item.createdAt),
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: controller,
-                            decoration: const InputDecoration(
-                              hintText: 'Viet binh luan...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          onPressed: () async {
-                            final text = controller.text.trim();
-                            if (text.isEmpty) {
-                              return;
-                            }
-                            await provider.addComment(
-                              postId: post.id,
-                              user: user,
-                              text: text,
-                            );
-                            controller.clear();
-                          },
-                          child: const Text('Gui'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+  Future<void> _confirmDeletePost(
+    SocialPost post,
+    AuthUser user,
+    SocialProvider provider,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Xóa bài viết'),
+          content: const Text('Bạn chắc chắn muốn xóa bài viết này?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Xóa'),
+            ),
+          ],
         );
       },
     );
 
-    controller.dispose();
+    if (shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await provider.deletePost(postId: post.id, user: user);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xóa bài viết.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  static String _fmtDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month $hour:$minute';
+  }
+}
+
+class _CommentSheet extends StatefulWidget {
+  final SocialPost post;
+  final AuthUser user;
+  final SocialProvider provider;
+
+  const _CommentSheet({
+    required this.post,
+    required this.user,
+    required this.provider,
+  });
+
+  @override
+  State<_CommentSheet> createState() => _CommentSheetState();
+}
+
+class _CommentSheetState extends State<_CommentSheet> {
+  late final TextEditingController _controller;
+  late final Stream<List<SocialComment>> _stream;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _stream = widget.provider.watchComments(widget.post.id);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Bình luận cộng đồng',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              Flexible(
+                child: StreamBuilder<List<SocialComment>>(
+                  stream: _stream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final items = snapshot.data ?? const [];
+                    if (items.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: Text('Chưa có bình luận.')),
+                      );
+                    }
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const Divider(height: 8),
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(item.userName),
+                          subtitle: Text(item.text),
+                          trailing: Text(
+                            _fmtDate(item.createdAt),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        hintText: 'Viết bình luận...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () async {
+                      final text = _controller.text.trim();
+                      if (text.isEmpty) return;
+                      FocusScope.of(context).unfocus();
+                      try {
+                        await widget.provider.addComment(
+                          postId: widget.post.id,
+                          user: widget.user,
+                          text: text,
+                        );
+                        if (mounted) _controller.clear();
+                      } catch (error) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Gửi'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _fmtDate(DateTime value) {
@@ -338,18 +533,221 @@ class _TravelSocialFeedTabState extends State<TravelSocialFeedTab> {
   }
 }
 
+class _EditPostSheet extends StatefulWidget {
+  final SocialPost post;
+  final AuthUser user;
+  final SocialProvider provider;
+
+  const _EditPostSheet({
+    required this.post,
+    required this.user,
+    required this.provider,
+  });
+
+  @override
+  State<_EditPostSheet> createState() => _EditPostSheetState();
+}
+
+class _EditPostSheetState extends State<_EditPostSheet> {
+  late final TextEditingController _contentCtrl;
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _removeImage = false;
+  XFile? _replacementImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentCtrl = TextEditingController(text: widget.post.content);
+  }
+
+  @override
+  void dispose() {
+    _contentCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chỉnh sửa bài viết',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _contentCtrl,
+                minLines: 2,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  hintText: 'Nhập nội dung...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Xóa ảnh hiện tại'),
+                  value: _removeImage,
+                  onChanged: (value) {
+                    setState(() {
+                      _removeImage = value;
+                      if (value) _replacementImage = null;
+                    });
+                  },
+                ),
+              ],
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await _imagePicker.pickImage(
+                        source: ImageSource.gallery,
+                        imageQuality: 75,
+                        maxWidth: 1280,
+                        maxHeight: 1280,
+                      );
+                      if (picked == null) return;
+                      setState(() {
+                        _replacementImage = picked;
+                        _removeImage = false;
+                      });
+                    },
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: Text(
+                      widget.post.imageUrl == null || widget.post.imageUrl!.isEmpty
+                          ? 'Thêm ảnh'
+                          : 'Đổi ảnh',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await _imagePicker.pickImage(
+                        source: ImageSource.camera,
+                        imageQuality: 75,
+                        maxWidth: 1280,
+                        maxHeight: 1280,
+                      );
+                      if (picked == null) return;
+                      setState(() {
+                        _replacementImage = picked;
+                        _removeImage = false;
+                      });
+                    },
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Chụp mới'),
+                  ),
+                  if (_replacementImage != null)
+                    OutlinedButton.icon(
+                      onPressed: () => setState(() => _replacementImage = null),
+                      icon: const Icon(Icons.close),
+                      label: const Text('Bỏ ảnh mới'),
+                    ),
+                ],
+              ),
+              if (_removeImage && widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Ảnh hiện tại sẽ bị xóa khi lưu thay đổi.',
+                  style: TextStyle(fontSize: 12, color: Colors.red),
+                ),
+              ],
+              if (_replacementImage == null && !_removeImage && widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    widget.post.imageUrl!,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+              if (_replacementImage != null) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image(
+                    image: ResizeImage(
+                      FileImage(File(_replacementImage!.path)),
+                      width: 1080,
+                    ),
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    FocusScope.of(context).unfocus();
+                    try {
+                      await widget.provider.updatePost(
+                        postId: widget.post.id,
+                        user: widget.user,
+                        content: _contentCtrl.text,
+                        imageFile: _replacementImage,
+                        removeImage: _removeImage,
+                      );
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã cập nhật bài viết.')),
+                        );
+                      }
+                    } catch (error) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.toString())),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Lưu thay đổi'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SocialPostCard extends StatelessWidget {
   const _SocialPostCard({
     required this.post,
     required this.isLikedByMe,
     required this.onLikeTap,
     required this.onCommentTap,
+    this.onEditTap,
+    this.onDeleteTap,
   });
 
   final SocialPost post;
   final bool isLikedByMe;
   final VoidCallback? onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback? onEditTap;
+  final VoidCallback? onDeleteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -381,6 +779,28 @@ class _SocialPostCard extends StatelessWidget {
                   _fmtDate(post.createdAt),
                   style: const TextStyle(fontSize: 11, color: Colors.black54),
                 ),
+                if (onEditTap != null || onDeleteTap != null)
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEditTap?.call();
+                      } else if (value == 'delete') {
+                        onDeleteTap?.call();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (onEditTap != null)
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Text('Sửa bài viết'),
+                        ),
+                      if (onDeleteTap != null)
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Text('Xóa bài viết'),
+                        ),
+                    ],
+                  ),
               ],
             ),
             if (post.content.trim().isNotEmpty) ...[
@@ -400,7 +820,7 @@ class _SocialPostCard extends StatelessWidget {
                     height: 120,
                     alignment: Alignment.center,
                     color: Colors.black12,
-                    child: const Text('Khong tai duoc anh'),
+                    child: const Text('Không tải được ảnh'),
                   ),
                 ),
               ),

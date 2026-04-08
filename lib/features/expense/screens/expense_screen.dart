@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -415,7 +415,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 });
                 _showSnack(
                   context,
-                  'Da luu chi phi va cong vao tong chi phi chuyen di.',
+                  'Đã lưu chi phí và cộng vào tổng chi phí chuyến đi.',
                 );
               },
               child: const Text('Lưu'),
@@ -443,7 +443,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   ImageSource.camera,
                 ),
           icon: const Icon(Icons.photo_camera_outlined),
-          label: const Text('Chup hoa don'),
+          label: const Text('Chụp hóa đơn'),
         ),
         OutlinedButton.icon(
           onPressed: _isScanning
@@ -640,7 +640,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       if (result.rawText.trim().isEmpty) {
         _showSnack(
           context,
-          'Khong nhan dien duoc text tren hoa don. Vui long chup lai ro hon.',
+          'Không nhận diện được văn bản trên hóa đơn. Vui lòng chụp lại rõ hơn.',
         );
         return;
       }
@@ -650,7 +650,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       if (!mounted) {
         return;
       }
-      _showSnack(context, 'Quet OCR that bai. Vui long thu lai.');
+      _showSnack(context, 'Quét OCR thất bại. Vui lòng thử lại.');
     } finally {
       if (mounted) {
         setState(() {
@@ -671,7 +671,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     }
 
     if (_titleCtrl.text.trim().isEmpty) {
-      _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hoa don').trim();
+      _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hóa đơn').trim();
     }
 
     final noteParts = <String>[];
@@ -681,7 +681,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       noteParts.add(result.rawText.trim().split('\n').take(3).join(' | '));
     }
     if (result.cloudinaryUrl != null && result.cloudinaryUrl!.isNotEmpty) {
-      noteParts.add('Anh hoa don: ${result.cloudinaryUrl}');
+      noteParts.add('Ảnh hóa đơn: ${result.cloudinaryUrl}');
     }
 
     if (noteParts.isNotEmpty && _noteCtrl.text.trim().isEmpty) {
@@ -706,14 +706,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     if (amount == null || amount <= 0) {
       _showSnack(
         context,
-        'Da quet xong nhung chua tim thay Tong tien. Vui long nhap tay.',
+        'Đã quét xong nhưng chưa tìm thấy Tổng tiền. Vui lòng nhập tay.',
       );
       return;
     }
 
     _showSnack(
       context,
-      'Da dien Tong tien vao form. Kiem tra lai va bam "Luu".',
+      'Đã điền Tổng tiền vào form. Kiểm tra lại và bấm "Lưu".',
     );
   }
 
@@ -724,18 +724,17 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     Trip trip,
   ) async {
     final titleCtrl = TextEditingController(text: item.title);
-    final amountCtrl = TextEditingController(
-      text: item.amount.toStringAsFixed(0),
-    );
+    final amountCtrl = TextEditingController(text: item.amount.toStringAsFixed(0));
     final noteCtrl = TextEditingController(text: item.note ?? '');
-    var type = item.type;
-    var date = item.date;
+    String currentType = item.type;
+    DateTime currentDate = item.date;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (localContext, setModalState) {
+          builder: (stfContext, setModalState) {
             return AlertDialog(
               title: const Text('Chỉnh sửa chi phí'),
               content: SingleChildScrollView(
@@ -760,7 +759,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      initialValue: type,
+                      initialValue: currentType,
                       decoration: const InputDecoration(labelText: 'Loại'),
                       items: ExpenseProvider.types
                           .where((value) => value != 'All')
@@ -774,7 +773,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       onChanged: (value) {
                         if (value != null) {
                           setModalState(() {
-                            type = value;
+                            currentType = value;
                           });
                         }
                       },
@@ -788,23 +787,23 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     OutlinedButton.icon(
                       onPressed: () async {
                         final picked = await showDatePicker(
-                          context: localContext,
+                          context: stfContext,
                           firstDate: _onlyDate(trip.startDate),
                           lastDate: _onlyDate(trip.endDate),
                           initialDate: _clampDate(
-                            date,
+                            currentDate,
                             trip.startDate,
                             trip.endDate,
                           ),
                         );
                         if (picked != null) {
                           setModalState(() {
-                            date = picked;
+                            currentDate = picked;
                           });
                         }
                       },
                       icon: const Icon(Icons.event),
-                      label: Text(_fmtDate(date)),
+                      label: Text(_fmtDate(currentDate)),
                     ),
                   ],
                 ),
@@ -816,26 +815,28 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 ),
                 FilledButton(
                   onPressed: () async {
-                    final parsedAmount = _parseAmount(amountCtrl.text);
                     final title = titleCtrl.text.trim();
-                    if (title.isEmpty ||
-                        parsedAmount == null ||
-                        parsedAmount <= 0) {
+                    final parsedAmount = _parseAmount(amountCtrl.text);
+                    if (title.isEmpty || parsedAmount == null || parsedAmount <= 0) {
                       _showSnack(context, 'Nhập đúng nội dung và số tiền > 0.');
                       return;
                     }
 
-                    await provider.updateExpense(
-                      expenseId: item.id,
-                      title: title,
-                      amount: parsedAmount,
-                      type: type,
-                      date: _clampDate(date, trip.startDate, trip.endDate),
-                      note: noteCtrl.text,
-                    );
-
-                    if (mounted) {
-                      Navigator.of(dialogContext).pop();
+                    try {
+                      await provider.updateExpense(
+                        expenseId: item.id,
+                        title: title,
+                        amount: parsedAmount,
+                        type: currentType,
+                        date: _clampDate(currentDate, trip.startDate, trip.endDate),
+                        note: noteCtrl.text,
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                        _showSnack(context, 'Đã cập nhật chi phí.');
+                      }
+                    } catch (e) {
+                      _showSnack(context, 'Lỗi cập nhật: $e');
                     }
                   },
                   child: const Text('Lưu thay đổi'),
@@ -847,15 +848,25 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       },
     );
 
-    titleCtrl.dispose();
-    amountCtrl.dispose();
-    noteCtrl.dispose();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      titleCtrl.dispose();
+      amountCtrl.dispose();
+      noteCtrl.dispose();
+    });
   }
 
   void _showSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.maybeOf(context) ??
+          ScaffoldMessenger.maybeOf(this.context);
+      messenger?.showSnackBar(SnackBar(content: Text(message)));
+    });
   }
 }
 
