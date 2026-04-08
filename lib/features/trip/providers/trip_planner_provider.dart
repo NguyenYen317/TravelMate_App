@@ -174,15 +174,41 @@ class TripPlannerProvider extends ChangeNotifier {
     required DateTime end,
     int? startMinuteOfDay,
     int? endMinuteOfDay,
+    List<TripLocation> initialLocations = const <TripLocation>[],
   }) async {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day);
+    final normalizedLocations = initialLocations
+        .asMap()
+        .entries
+        .map((entry) {
+          final location = entry.value;
+          final normalizedDay = DateTime(
+            location.day.year,
+            location.day.month,
+            location.day.day,
+          );
+          final note = location.note?.trim();
+          final normalizedId = location.id.trim().isEmpty
+              ? '${DateTime.now().microsecondsSinceEpoch}_${entry.key}'
+              : location.id;
+          return TripLocation(
+            id: normalizedId,
+            name: location.name.trim(),
+            day: _clampDate(normalizedDay, normalizedStart, normalizedEnd),
+            note: (note == null || note.isEmpty) ? null : note,
+            minuteOfDay: location.minuteOfDay,
+          );
+        })
+        .where((location) => location.name.isNotEmpty)
+        .toList();
+
     final trip = Trip(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title,
       startDate: normalizedStart,
       endDate: normalizedEnd,
-      locations: [],
+      locations: normalizedLocations,
       startMinuteOfDay: startMinuteOfDay,
       endMinuteOfDay: endMinuteOfDay,
     );
