@@ -674,20 +674,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hoa don').trim();
     }
 
-    final noteParts = <String>[];
-    if (result.summary != null && result.summary!.trim().isNotEmpty) {
-      noteParts.add(result.summary!.trim());
-    } else if (result.rawText.trim().isNotEmpty) {
-      noteParts.add(result.rawText.trim().split('\n').take(3).join(' | '));
-    }
-    if (result.cloudinaryUrl != null && result.cloudinaryUrl!.isNotEmpty) {
-      noteParts.add('Anh hoa don: ${result.cloudinaryUrl}');
-    }
-
-    if (noteParts.isNotEmpty && _noteCtrl.text.trim().isEmpty) {
-      _noteCtrl.text = noteParts.join('\n');
-    }
-
     final suggestedType = result.suggestedType;
     if (suggestedType != null &&
         ExpenseProvider.types.contains(suggestedType) &&
