@@ -285,9 +285,9 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Chuyến đi',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.auto_awesome_outlined),
-              activeIcon: Icon(Icons.auto_awesome),
-              label: 'AI gợi ý',
+              icon: Icon(Icons.groups_outlined),
+              activeIcon: Icon(Icons.groups),
+              label: 'Nhật ký',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

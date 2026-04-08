@@ -18,8 +18,12 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const double _rerouteDistanceMeters = 30;
+
   LatLng? _currentLocation;
+  LatLng? _lastRoutedFrom;
   List<LatLng> _routePoints = [];
+  final Distance _distance = const Distance();
   final MapController _mapController = MapController();
   final MapService _mapService = MapService();
   final SearchService _searchService = SearchService();
@@ -69,21 +73,37 @@ class _MapScreenState extends State<MapScreen> {
               );
             }
 
-            if (_routePoints.isEmpty) {
-              _getDirection();
-            }
+            _maybeRecalculateRoute();
           }
         });
   }
 
+  Future<void> _maybeRecalculateRoute() async {
+    if (_currentLocation == null || _isLoadingRoute) return;
+
+    if (_lastRoutedFrom == null) {
+      await _getDirection();
+      return;
+    }
+
+    final movedDistance = _distance(_lastRoutedFrom!, _currentLocation!);
+    if (movedDistance >= _rerouteDistanceMeters) {
+      await _getDirection();
+    }
+  }
+
   Future<void> _getDirection() async {
-    if (_currentLocation == null) return;
+    if (_currentLocation == null || _isLoadingRoute) return;
+    final origin = _currentLocation!;
+
     setState(() => _isLoadingRoute = true);
     final destination = LatLng(widget.place.lat, widget.place.lng);
-    final points = await _mapService.getRoute(_currentLocation!, destination);
+    final points = await _mapService.getRoute(origin, destination);
+
     if (mounted) {
       setState(() {
         _routePoints = points;
+        _lastRoutedFrom = origin;
         _isLoadingRoute = false;
       });
     }

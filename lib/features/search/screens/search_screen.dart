@@ -1,6 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import 'ai_suggestion_tab.dart';
 import '../provider/search_provider.dart';
 import 'place_detail_screen.dart';
 
@@ -26,7 +28,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _onSearchChanged(String query) {
     final provider = Provider.of<SearchProvider>(context, listen: false);
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
     _debounce = Timer(const Duration(milliseconds: 800), () {
       provider.search(query);
     });
@@ -57,168 +61,180 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Khám phá',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 0,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text(
+            'Tìm kiếm địa điểm',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Khám phá'),
+              Tab(text: 'AI gợi ý'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [_buildExploreTab(), const AiSuggestionTab()],
+        ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Bạn muốn đi đâu? (Đà Nẵng, Phú Quốc...)',
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: Colors.blueAccent,
-                  ),
-                  suffixIcon: ValueListenableBuilder<bool>(
-                    valueListenable: _showClearButton,
-                    builder: (context, show, child) {
-                      return show
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.cancel_rounded,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                Provider.of<SearchProvider>(
-                                  context,
-                                  listen: false,
-                                ).search('');
-                              },
-                            )
-                          : const SizedBox.shrink();
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
+    );
+  }
+
+  Widget _buildExploreTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
                 ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Bạn muốn đi đâu? (Đà Nẵng, Phú Quốc...)',
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Colors.blueAccent,
+                ),
+                suffixIcon: ValueListenableBuilder<bool>(
+                  valueListenable: _showClearButton,
+                  builder: (context, show, child) {
+                    return show
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.cancel_rounded,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              Provider.of<SearchProvider>(
+                                context,
+                                listen: false,
+                              ).search('');
+                            },
+                          )
+                        : const SizedBox.shrink();
+                  },
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
           ),
-
-          // Danh mục lọc
-          Consumer<SearchProvider>(
-            builder: (context, provider, child) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _buildFilterChip(
-                        'Nhà hàng',
-                        'restaurant',
-                        Icons.restaurant_rounded,
-                        provider,
-                      ),
-                      const SizedBox(width: 10),
-                      _buildFilterChip(
-                        'Khách sạn',
-                        'hotel',
-                        Icons.hotel_rounded,
-                        provider,
-                      ),
-                      const SizedBox(width: 10),
-                      _buildFilterChip(
-                        'Cà phê',
-                        'cafe',
-                        Icons.local_cafe_rounded,
-                        provider,
-                      ),
-                      const SizedBox(width: 10),
-                      _buildFilterChip(
-                        'Tham quan',
-                        'tourism',
-                        Icons.explore_rounded,
-                        provider,
-                      ),
-                    ],
-                  ),
+        ),
+        Consumer<SearchProvider>(
+          builder: (context, provider, child) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      'Nhà hàng',
+                      'restaurant',
+                      Icons.restaurant_rounded,
+                      provider,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildFilterChip(
+                      'Khách sạn',
+                      'hotel',
+                      Icons.hotel_rounded,
+                      provider,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildFilterChip(
+                      'Cà phê',
+                      'cafe',
+                      Icons.local_cafe_rounded,
+                      provider,
+                    ),
+                    const SizedBox(width: 10),
+                    _buildFilterChip(
+                      'Tham quan',
+                      'tourism',
+                      Icons.explore_rounded,
+                      provider,
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Consumer<SearchProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
 
-          // Kết quả tìm kiếm
-          Expanded(
-            child: Consumer<SearchProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                }
-
-                if (provider.searchResults.isNotEmpty) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (provider.activeCategory != null &&
-                          provider.currentQuery.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                          child: Text(
-                            '${_getCategoryDisplayName(provider.activeCategory)} ở ${provider.currentQuery}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.black87,
-                            ),
+              if (provider.searchResults.isNotEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (provider.activeCategory != null &&
+                        provider.currentQuery.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        child: Text(
+                          '${_getCategoryDisplayName(provider.activeCategory)} ở ${provider.currentQuery}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.black87,
                           ),
                         ),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: provider.searchResults.length,
-                          itemBuilder: (context, index) {
-                            final place = provider.searchResults[index];
-                            return _buildPlaceCard(context, place, provider);
-                          },
-                        ),
                       ),
-                    ],
-                  );
-                }
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: provider.searchResults.length,
+                        itemBuilder: (context, index) {
+                          final place = provider.searchResults[index];
+                          return _buildPlaceCard(context, place, provider);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }
 
-                if (provider.hasSearched) return _buildEmptyState();
-                return _buildExplorePlaceholder();
-              },
-            ),
+              if (provider.hasSearched) {
+                return _buildEmptyState();
+              }
+              return _buildExplorePlaceholder();
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -227,13 +243,11 @@ class _SearchScreenState extends State<SearchScreen> {
     dynamic place,
     SearchProvider provider,
   ) {
-    // Logic hiển thị Tag linh hoạt
     String tagText = '';
     if (provider.activeCategory != null) {
       tagText = _getCategoryDisplayName(provider.activeCategory);
     } else {
-      String rawCat = place.category.toString().toUpperCase();
-      // Nếu là Boundary hoặc Place (khi chưa chọn bộ lọc) thì hiện ĐỊA DANH
+      final rawCat = place.category.toString().toUpperCase();
       if (rawCat == 'BOUNDARY' || rawCat == 'PLACE') {
         tagText = 'ĐỊA DANH';
       } else {
@@ -265,7 +279,6 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
         child: Row(
           children: [
-            // Ảnh địa điểm
             Hero(
               tag: 'place-${place.id}',
               child: ClipRRect(
@@ -276,8 +289,6 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: _buildImage(place.imageUrl),
               ),
             ),
-
-            // Thông tin
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -418,7 +429,7 @@ class _SearchScreenState extends State<SearchScreen> {
     IconData icon,
     SearchProvider provider,
   ) {
-    bool isSelected = provider.activeCategory == key;
+    final isSelected = provider.activeCategory == key;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
@@ -489,3 +500,5 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 }
+
+
