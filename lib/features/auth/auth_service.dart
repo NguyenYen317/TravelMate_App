@@ -113,6 +113,45 @@ class AuthService {
     return user;
   }
 
+  Future<void> resetLocalPassword({
+    required String username,
+    required String newPassword,
+  }) async {
+    if (username.trim().isEmpty || newPassword.isEmpty) {
+      throw const AuthException(
+        'Username và mật khẩu mới không được để trống.',
+      );
+    }
+    if (newPassword.length < 8) {
+      throw const AuthException('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(newPassword) ||
+        !RegExp(r'[a-z]').hasMatch(newPassword) ||
+        !RegExp(r'[0-9]').hasMatch(newPassword)) {
+      throw const AuthException(
+        'Mật khẩu mới cần có chữ hoa, chữ thường và số.',
+      );
+    }
+
+    final registered = await _localStorage.getRegisteredCredentials();
+    if (registered == null) {
+      throw const AuthException('Chưa có tài khoản local để khôi phục.');
+    }
+    if (registered.username != username.trim()) {
+      throw const AuthException(
+        'Username không khớp với tài khoản đã đăng ký.',
+      );
+    }
+    if (registered.password == newPassword) {
+      throw const AuthException('Mật khẩu mới phải khác mật khẩu hiện tại.');
+    }
+
+    await _localStorage.saveRegisteredCredentials(
+      username: username.trim(),
+      password: newPassword,
+    );
+  }
+
   Future<AuthUser> loginWithGoogle() async {
     if (!_isFirebaseAvailable) {
       throw const AuthException(

@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthUser? _currentUser;
   bool _isLoading = false;
+  bool _isResettingPassword = false;
 
   AuthUser? get currentUser => _currentUser;
   String get displayName {
@@ -32,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   bool get isLoading => _isLoading;
+  bool get isResettingPassword => _isResettingPassword;
   bool get isLoggedIn => _currentUser != null;
 
   Future<void> loadSession() async {
@@ -56,6 +58,23 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _currentUser = await _authService.loginWithGoogle();
     _setLoading(false);
+  }
+
+  Future<void> resetLocalPassword({
+    required String username,
+    required String newPassword,
+  }) async {
+    _isResettingPassword = true;
+    notifyListeners();
+    try {
+      await _authService.resetLocalPassword(
+        username: username,
+        newPassword: newPassword,
+      );
+    } finally {
+      _isResettingPassword = false;
+      notifyListeners();
+    }
   }
 
   Future<void> logout() async {
