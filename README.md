@@ -1,220 +1,251 @@
-# TRAVELMATE_APP
-MỘT ỨNG DỤNG DU LỊCH THÔNG MINH XÂY DỰNG BẰNG FLUTTER
+﻿# ✈️ TravelMate App
 
-📌 Introduction
-- TravelMate là một ứng dụng du lịch thông minh được phát triển bằng Flutter, giúp người dùng khám phá địa điểm, lập kế hoạch chuyến đi, quản lý chi phí và chia sẻ trải nghiệm du lịch.
-- Ứng dụng hướng đến trải nghiệm đa nền tảng (Android & iOS), giao diện thân thiện, dễ sử dụng và tích hợp các công nghệ hiện đại như bản đồ, AI và lưu trữ dữ liệu.
+Ứng dụng du lịch thông minh bằng Flutter, tập trung vào 4 nhóm chính:
+- 🔎 Khám phá địa điểm
+- 🧳 Lập kế hoạch chuyến đi (thủ công + AI)
+- 💸 Quản lý chi phí + OCR hóa đơn
+- 🌐 Nhật ký cộng đồng + Chat Bot AI
 
-🎯 Objectives
-- Xây dựng ứng dụng du lịch tích hợp nhiều chức năng trong một nền tảng
-- Hỗ trợ người dùng:
-- Tìm kiếm và khám phá địa điểm
-- Lập kế hoạch chuyến đi
-- Quản lý chi phí
-- Kết nối cộng đồng du lịch
-- Ứng dụng AI để gợi ý lịch trình thông minh
+---
 
-🛠️ Technologies Used
-🔹 Main Technologies
-Flutter (Dart)
-SharedPreferences (Local Storage)
-Firebase (Authentication, Firestore, Storage)
+## 🚀 Tính năng đã hoàn thành (theo code hiện tại)
 
-🔹 Map & Location
-Google Maps Flutter
-Geolocator
-Google Places API
-Google Directions API
+### 🔐 1. Xác thực người dùng
+- Đăng nhập / đăng ký tài khoản.
+- Đăng nhập bằng Google.
+- `AuthGate` tự điều hướng theo trạng thái đăng nhập.
 
-🔹 AI Integration
-OpenAI API / Gemini API (for itinerary suggestion)
+### 🧭 2. Điều hướng chính trong app
+Bottom navigation hiện có **5 tab**:
+1. 🏠 Trang chủ
+2. 🧭 Khám phá
+3. 🧳 Chuyến đi
+4. 🌐 Nhật ký cộng đồng
+5. 👤 Cá nhân
 
-🔹 Other
-HTTP (API calls)
-Local Database (Hive / SQLite)
-Flutter Local Notifications
+Ngoài ra có **🤖 bong bóng Chat Bot nổi** trên toàn app (kéo thả được).
 
-🚀 Features
-🔐 1. Authentication
-Register with username & password (local storage)
-Login / Logout
-Google Sign-In
+### 🏠 3. Trang chủ
+- Header chào người dùng.
+- Thanh tìm kiếm nhanh.
+- Card **The Planner (AI)**:
+  - Nhập prompt tự nhiên (ví dụ: `Đà Nẵng 3 ngày`).
+  - AI tạo lịch trình theo ngày.
+  - Có `Xem thêm / Thu gọn`.
+  - Có nút `Tạo chuyến đi từ AI` để đẩy thẳng sang tab Chuyến đi.
 
-🔍 2. Place Search & Discovery
-Search places by name (autocomplete)
-Filter:
-Restaurants
-Hotels
-Tourist attractions
-View place details:
-Name, image, address
-Rating, opening hours
-Add / remove favorite places
+### 🧭 4. Khám phá địa điểm
+Gồm 2 tab con:
+- **Khám phá**: tìm kiếm địa điểm, lọc danh mục, xem chi tiết.
+- **AI gợi ý**:
+  - Sinh bài gợi ý theo dữ liệu chuyến đi hiện có.
+  - Loại gợi ý: địa điểm đẹp, món ăn, văn hóa địa phương.
+  - Có thể like/comment cục bộ, lưu yêu thích.
+  - Có nút `Thêm vào chuyến đi` theo ngày cụ thể.
 
-🗺️ 3. Map & Navigation
-Display Google Map
-Detect current location (GPS)
-Show user location
-Show place markers
-Directions from current location
-Nearby places suggestion
+### 🧳 5. Quản lý chuyến đi
+- Tạo chuyến đi với:
+  - Tên chuyến đi
+  - Khoảng ngày
+  - **Giờ bắt đầu / giờ kết thúc**
+  - Chọn nhanh địa điểm từ danh sách yêu thích
+- Quản lý lịch trình theo ngày:
+  - Thêm/sửa/xóa địa điểm
+  - Gán giờ cho từng hoạt động
+  - Kéo-thả đổi thứ tự (reorder)
+- Mở nhanh sang màn quản lý chi phí của chuyến đi.
 
-🧳 4. Trip Planning
-Create trip (name, start date, end date)
-Add places to itinerary
-Organize places by day
-View:
-Timeline
-Calendar
-Edit / delete places
-Drag & drop to reorder
+### 💸 6. Quản lý chi phí + quét hóa đơn OCR
+- Thêm/sửa/xóa chi phí thủ công.
+- Lọc theo loại và ngày.
+- Biểu đồ tròn thống kê theo danh mục.
+- Quét hóa đơn bằng camera/thư viện:
+  - OCR text
+  - Tách tổng tiền
+  - Tự điền form chi phí
 
-💰 5. Expense Management
-Add expenses:
-Amount
-Category (food, hotel, transport)
-Calculate total cost
-Filter by:
-Date
-Category
+### 🌐 7. Nhật ký cộng đồng
+- Feed bài viết theo thời gian (có load thêm).
+- Đăng bài text hoặc text + ảnh.
+- Sửa/xóa bài viết của chính mình.
+- Like/unlike bài viết.
+- Comment realtime (bottom sheet).
+- Bộ lọc: `Tất cả bài đăng` / `Bài của tôi`.
 
-🤖 6. AI Itinerary Suggestion
-Input natural language:
-Example: “Travel to Da Nang for 3 days”
-Automatically generate:
-List of places
-Daily schedule
+### 🔔 8. Smart Assistant Notifications
+- Poll nhắc lịch trình theo thời gian.
+- Hiện banner nổi trong app.
+- Tự đóng sau 5 giây hoặc đóng thủ công.
 
-🌐 7. Social Travel Network
-Create posts:
-Image, content, location
-Interactions:
-Like
-Comment
-Infinite scrolling feed
+### 🤖 9. Chat Bot AI (bong bóng nổi)
+- Bong bóng nổi toàn app, kéo-thả vị trí.
+- Nhấn để mở `BottomSheet` tiêu đề `Chat Bot`.
+- Input tự focus, bàn phím đẩy layout đúng.
+- Luồng chuẩn ổn định:
+  - `UI -> Provider -> Service -> API -> Provider -> UI`
 
-🔔 8. Notifications
-Trip reminders
-Check-in reminders
-Social interaction notifications
+---
 
-☁️ 9. Data Synchronization
-Cloud storage
-Multi-device sync
-Data backup
+## 🧠 Kiến trúc kỹ thuật
 
-📷 10. Bill Scanning (Advanced)
-Scan receipts using camera
-Extract text (OCR)
-Automatically add to expenses
+- UI không gọi API trực tiếp.
+- `Provider` quản lý state/loading/error.
+- `AIPlannerService` chịu trách nhiệm gọi AI provider.
+- `SocialService` xử lý Firestore + upload ảnh.
 
-👥 Team Structure (Suggested)
-Member	Responsibility
-A	Authentication + App Base
-B	Search + Place
-C	Map + Navigation
-D	Trip + Expense
-E	AI + Social + Notification + Sync
+---
 
-🔄 Application Flow
-1. Login / Register
-2. Search places or view map
-3. Create trip
-4. Add places to itinerary
-5. Manage expenses
-6. Share experiences
-   
-📂 Project Structure
+## 🛠️ Công nghệ sử dụng
+
+- Flutter (Dart)
+- Provider
+- Firebase:
+  - `firebase_core`
+  - `firebase_auth`
+  - `cloud_firestore`
+  - `firebase_storage`
+- AI/API:
+  - Gemini API
+  - Ollama API
+  - HTTP
+- Ảnh/OCR:
+  - `image_picker`
+  - `google_mlkit_text_recognition`
+- Bản đồ/Vị trí:
+  - `flutter_map`
+  - `geolocator`
+  - `latlong2`
+- Khác:
+  - `flutter_local_notifications`
+  - `timezone`
+  - `shared_preferences`
+  - `hive`
+
+---
+
+## ⚙️ Cấu hình AI bằng `--dart-define`
+
+### ✅ Gemini
+- `AI_PROVIDER=gemini`
+- `GEMINI_API_KEY=...`
+- `GEMINI_MODEL=gemini-2.0-flash` (mặc định)
+
+### ✅ Ollama
+- `AI_PROVIDER=ollama`
+- `OLLAMA_BASE_URL=http://...:11434`
+- `OLLAMA_MODEL=llama3.2:3b` (hoặc model bạn có)
+
+---
+
+## ▶️ Cách chạy dự án
+
+### 1) Cài dependencies
+```bash
+flutter pub get
+```
+
+### 2) Chạy trên Android Emulator + Ollama (Windows)
+```bash
+flutter emulators --launch Pixel_4
+flutter run -d emulator-5554 --dart-define=AI_PROVIDER=ollama --dart-define=OLLAMA_BASE_URL=http://10.0.2.2:11434 --dart-define=OLLAMA_MODEL=llama3.2:3b
+```
+
+### 3) Chạy trên máy thật Android + Ollama (cùng LAN)
+```bash
+flutter run -d <DEVICE_ID> --dart-define=AI_PROVIDER=ollama --dart-define=OLLAMA_BASE_URL=http://<PC_LAN_IP>:11434 --dart-define=OLLAMA_MODEL=llama3.2:3b
+```
+
+### 4) Chạy với Gemini
+```bash
+flutter run -d <DEVICE_ID> --dart-define=AI_PROVIDER=gemini --dart-define=GEMINI_API_KEY=<YOUR_KEY> --dart-define=GEMINI_MODEL=gemini-2.0-flash
+```
+
+---
+
+## ☁️ Firebase / Cloud cần cấu hình
+
+### Firestore
+- Tạo Firestore Database.
+- Collection social chính: `social_posts`.
+
+### Upload ảnh bài viết
+Code hiện tại upload ảnh qua Cloudinary bằng:
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_UPLOAD_PRESET`
+
+Nếu thiếu Cloudinary, app vẫn cho đăng bài **text-only**.
+
+---
+
+## 📁 Cấu trúc thư mục (dễ nhìn)
+
+```text
 lib/
-│
-├── main.dart
 ├── app.dart
-│
-├── core/                  # Dùng chung toàn app
-│   ├── constants/         # API keys, màu sắc, config
-│   ├── utils/             # helper, formatter, validator
-│   ├── services/          # service chung (http, storage,...)
-│   └── theme/             # light/dark theme
-│
-├── data/                  # DATA LAYER
-│   ├── models/            # model class (Place, Trip, User...)
-│   ├── repositories/      # xử lý dữ liệu (API + local)
-│   └── datasources/
-│       ├── local/         # SharedPreferences, Hive
-│       └── remote/        # API (Google, AI, Firebase)
-│
-├── features/              # CHIA THEO MODULE (QUAN TRỌNG)
-│
-│   ├── auth/              # 🔐 A làm
-│   │   ├── screens/
-│   │   ├── widgets/
-│   │   ├── provider/      # state management
-│   │   └── auth_service.dart
-│   │
-│   ├── search/            # 🔍 B làm
-│   │   ├── screens/
-│   │   ├── widgets/
-│   │   ├── provider/
-│   │   ├── search_service.dart
-│   │   └── place_detail/
-│   │
-│   ├── map/               # 🗺️ C làm
-│   │   ├── screens/
-│   │   ├── widgets/
-│   │   ├── provider/
-│   │   └── map_service.dart
-│   │
-│   ├── trip/              # 🧳 D làm
-│   │   ├── screens/
-│   │   ├── widgets/
-│   │   ├── provider/
-│   │   └── trip_service.dart
-│   │
-│   ├── expense/           # 💰 D làm
-│   │   ├── screens/
-│   │   ├── widgets/
-│   │   ├── provider/
-│   │   └── expense_service.dart
-│   │
-│   ├── ai/                # 🤖 E làm
-│   │   ├── services/
+├── main.dart
+├── core/
+│   ├── constants/
+│   ├── providers/
+│   ├── services/
+│   ├── theme/
+│   └── utils/
+├── data/
+│   ├── datasources/
+│   └── models/
+├── features/
+│   ├── ai/
 │   │   ├── models/
-│   │   └── ai_provider.dart
-│   │
-│   ├── social/            # 🌐 E làm
-│   │   ├── screens/
-│   │   ├── widgets/
+│   │   ├── ai_provider.dart
+│   │   └── ai_planner_service.dart
+│   ├── auth/
 │   │   ├── provider/
-│   │   └── social_service.dart
-│   │
-│   ├── notification/      # 🔔 E làm
+│   │   ├── screens/
+│   │   └── auth_service.dart
+│   ├── community/
+│   │   └── screens/
+│   ├── expense/
+│   │   ├── models/
+│   │   ├── providers/
+│   │   ├── screens/
+│   │   └── services/
+│   ├── home/
+│   │   ├── screens/
+│   │   └── widgets/
+│   ├── map/
+│   │   ├── screens/
+│   │   └── map_service.dart
+│   ├── notification/
+│   │   ├── widgets/
 │   │   └── notification_service.dart
-│   │
-│   └── sync/              # ☁️ E làm (khó nhất)
-│       └── sync_service.dart
-│
-├── routes/                # quản lý route
-│   └── app_routes.dart
-│
-└── widgets/               # widget dùng chung toàn app
+│   ├── profile/
+│   │   └── screens/
+│   ├── search/
+│   │   ├── provider/
+│   │   ├── screens/
+│   │   └── search_service.dart
+│   ├── social/
+│   │   ├── models/
+│   │   ├── providers/
+│   │   └── services/
+│   ├── sync/
+│   │   └── sync_service.dart
+│   └── trip/
+│       ├── models/
+│       ├── providers/
+│       ├── screens/
+│       └── trip_service.dart
+└── routes/
+    └── app_routes.dart
+```
 
+---
 
-⚠️ Notes
-Cần bật billing cho Google Maps API
-Firebase cần cấu hình cho Android/iOS
-Không commit API keys lên GitHub
+## 📌 Ghi chú quan trọng
+- Không commit API key thật lên GitHub.
+- Nên dùng UTF-8 cho toàn bộ file Dart/Markdown để tránh lỗi font tiếng Việt.
+- Nếu gặp lỗi kết nối Ollama trên Android emulator, dùng `10.0.2.2:11434`.
 
-📈 Future Improvements
-Offline mode
-Recommendation system nâng cao
-Voice search
-Real-time chat
-AI cá nhân hóa lịch trình
+---
 
-📌 Conclusion
-
-TravelMate là một hệ thống ứng dụng du lịch thông minh tích hợp nhiều chức năng từ cơ bản đến nâng cao. Việc sử dụng Flutter giúp đảm bảo hiệu năng, khả năng mở rộng và trải nghiệm người dùng tốt trên nhiều nền tảng.
-
-⭐ License
-
-This project is for educational purposes.
+## 👥 Nhóm phát triển
+TravelMate team.
