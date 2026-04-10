@@ -43,6 +43,7 @@ class Trip {
     required this.locations,
     this.startMinuteOfDay,
     this.endMinuteOfDay,
+    this.updatedAtMs,
   });
 
   final String id;
@@ -52,6 +53,7 @@ class Trip {
   final List<TripLocation> locations;
   final int? startMinuteOfDay;
   final int? endMinuteOfDay;
+  final int? updatedAtMs;
 
   Trip copyWith({
     String? id,
@@ -61,6 +63,7 @@ class Trip {
     List<TripLocation>? locations,
     int? startMinuteOfDay,
     int? endMinuteOfDay,
+    int? updatedAtMs,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -70,6 +73,7 @@ class Trip {
       locations: locations ?? this.locations,
       startMinuteOfDay: startMinuteOfDay ?? this.startMinuteOfDay,
       endMinuteOfDay: endMinuteOfDay ?? this.endMinuteOfDay,
+      updatedAtMs: updatedAtMs ?? this.updatedAtMs,
     );
   }
 
@@ -82,6 +86,7 @@ class Trip {
       'locations': locations.map((item) => item.toMap()).toList(),
       'startMinuteOfDay': startMinuteOfDay,
       'endMinuteOfDay': endMinuteOfDay,
+      'updatedAtMs': updatedAtMs,
     };
   }
 
@@ -96,6 +101,17 @@ class Trip {
           .toList(),
       startMinuteOfDay: map['startMinuteOfDay'] as int?,
       endMinuteOfDay: map['endMinuteOfDay'] as int?,
+      updatedAtMs: _asInt(map['updatedAtMs']),
     );
   }
+}
+
+int? _asInt(dynamic value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse((value ?? '').toString());
 }

@@ -61,6 +61,7 @@ class TripPlannerProvider extends ChangeNotifier {
     final box = await Hive.openBox<dynamic>(_boxName);
     final rawTrips =
         box.get(storageKey, defaultValue: <dynamic>[]) as List<dynamic>;
+    final localUpdatedAt = _readLocalUpdatedAt(box, storageKey);
 
     var localTrips = rawTrips
         .map((item) => Trip.fromMap(item as Map<dynamic, dynamic>))
@@ -88,16 +89,19 @@ class TripPlannerProvider extends ChangeNotifier {
             trips: _tripsToRaw(localTrips),
           );
         } else if (localHasData && cloudHasData) {
-          final localUpdatedAt = _readLocalUpdatedAt(box, storageKey);
-          if (cloudPayload.updatedAtMs >= localUpdatedAt) {
-            localTrips = cloudTrips;
-            await _saveLocalOnly(_tripsToRaw(localTrips));
-          } else {
-            await SyncService.instance.saveTrips(
-              userId: userId,
-              trips: _tripsToRaw(localTrips),
-            );
-          }
+          localTrips = _mergeTrips(
+            localTrips: localTrips,
+            cloudTrips: cloudTrips,
+            localUpdatedAtMs: localUpdatedAt,
+            cloudUpdatedAtMs: cloudPayload.updatedAtMs,
+          );
+
+          final mergedRaw = _tripsToRaw(localTrips);
+          await _saveLocalOnly(mergedRaw);
+          await SyncService.instance.saveTrips(
+            userId: userId,
+            trips: mergedRaw,
+          );
         }
       }
     }
@@ -211,6 +215,7 @@ class TripPlannerProvider extends ChangeNotifier {
       locations: normalizedLocations,
       startMinuteOfDay: startMinuteOfDay,
       endMinuteOfDay: endMinuteOfDay,
+      updatedAtMs: _nowMs(),
     );
     _trips.insert(0, trip);
     _activeTripId = trip.id;
@@ -259,6 +264,7 @@ class TripPlannerProvider extends ChangeNotifier {
       startDate: normalizedStart,
       endDate: normalizedEnd,
       locations: generatedLocations,
+      updatedAtMs: _nowMs(),
     );
 
     _trips.insert(0, trip);
@@ -310,6 +316,7 @@ class TripPlannerProvider extends ChangeNotifier {
       locations: updatedLocations,
       startMinuteOfDay: startMinuteOfDay ?? current.startMinuteOfDay,
       endMinuteOfDay: endMinuteOfDay ?? current.endMinuteOfDay,
+      updatedAtMs: _nowMs(),
     );
 
     if (_activeTripId == tripId) {
@@ -368,13 +375,20 @@ class TripPlannerProvider extends ChangeNotifier {
     final newLocation = TripLocation(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: name,
-      day: DateTime(day.year, day.month, day.day),
+      day: _clampDate(
+        DateTime(day.year, day.month, day.day),
+        _trips[index].startDate,
+        _trips[index].endDate,
+      ),
       minuteOfDay: minuteOfDay,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
     );
 
     final updatedLocations = [..._trips[index].locations, newLocation];
-    _trips[index] = _trips[index].copyWith(locations: updatedLocations);
+    _trips[index] = _trips[index].copyWith(
+      locations: updatedLocations,
+      updatedAtMs: _nowMs(),
+    );
     await _persist();
     await _syncNotifications();
     notifyListeners();
@@ -391,7 +405,10 @@ class TripPlannerProvider extends ChangeNotifier {
     final updated = _trips[index].locations
         .where((location) => location.id != locationId)
         .toList();
-    _trips[index] = _trips[index].copyWith(locations: updated);
+    _trips[index] = _trips[index].copyWith(
+      locations: updated,
+      updatedAtMs: _nowMs(),
+    );
     await _persist();
     await _syncNotifications();
     notifyListeners();
@@ -427,7 +444,10 @@ class TripPlannerProvider extends ChangeNotifier {
       note: note == null || note.trim().isEmpty ? null : note.trim(),
     );
 
-    _trips[tripIndex] = trip.copyWith(locations: updatedLocations);
+    _trips[tripIndex] = trip.copyWith(
+      locations: updatedLocations,
+      updatedAtMs: _nowMs(),
+    );
     await _persist();
     await _syncNotifications();
     notifyListeners();
@@ -477,7 +497,10 @@ class TripPlannerProvider extends ChangeNotifier {
       }
     }
 
-    _trips[tripIndex] = trip.copyWith(locations: rebuilt);
+    _trips[tripIndex] = trip.copyWith(
+      locations: rebuilt,
+      updatedAtMs: _nowMs(),
+    );
     await _persist();
     await _syncNotifications();
     notifyListeners();
@@ -527,7 +550,10 @@ class TripPlannerProvider extends ChangeNotifier {
     }
 
     final updatedLocations = [...trip.locations, ...generatedLocations];
-    _trips[tripIndex] = trip.copyWith(locations: updatedLocations);
+    _trips[tripIndex] = trip.copyWith(
+      locations: updatedLocations,
+      updatedAtMs: _nowMs(),
+    );
     await _persist();
     await _syncNotifications();
     notifyListeners();
@@ -575,6 +601,69 @@ class TripPlannerProvider extends ChangeNotifier {
     }
     return value;
   }
+
+  List<Trip> _mergeTrips({
+    required List<Trip> localTrips,
+    required List<Trip> cloudTrips,
+    required int localUpdatedAtMs,
+    required int cloudUpdatedAtMs,
+  }) {
+    final byId = <String, Trip>{};
+
+    for (final trip in localTrips) {
+      byId[trip.id] = trip;
+    }
+
+    for (final cloudTrip in cloudTrips) {
+      final localTrip = byId[cloudTrip.id];
+      if (localTrip == null) {
+        byId[cloudTrip.id] = cloudTrip;
+        continue;
+      }
+
+      byId[cloudTrip.id] = _pickNewerTrip(
+        localTrip: localTrip,
+        cloudTrip: cloudTrip,
+        localUpdatedAtMs: localUpdatedAtMs,
+        cloudUpdatedAtMs: cloudUpdatedAtMs,
+      );
+    }
+
+    final merged = byId.values.toList();
+    merged.sort((a, b) {
+      final aUpdated = a.updatedAtMs ?? 0;
+      final bUpdated = b.updatedAtMs ?? 0;
+      if (aUpdated != bUpdated) {
+        return bUpdated.compareTo(aUpdated);
+      }
+      return b.startDate.compareTo(a.startDate);
+    });
+    return merged;
+  }
+
+  Trip _pickNewerTrip({
+    required Trip localTrip,
+    required Trip cloudTrip,
+    required int localUpdatedAtMs,
+    required int cloudUpdatedAtMs,
+  }) {
+    final localItemUpdatedAt = localTrip.updatedAtMs ?? 0;
+    final cloudItemUpdatedAt = cloudTrip.updatedAtMs ?? 0;
+
+    if (cloudItemUpdatedAt > localItemUpdatedAt) {
+      return cloudTrip;
+    }
+    if (localItemUpdatedAt > cloudItemUpdatedAt) {
+      return localTrip;
+    }
+
+    if (cloudUpdatedAtMs >= localUpdatedAtMs) {
+      return cloudTrip;
+    }
+    return localTrip;
+  }
+
+  int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 }
 
 extension _IterableX<T> on Iterable<T> {

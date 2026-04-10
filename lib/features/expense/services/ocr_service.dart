@@ -42,7 +42,8 @@ class OCRService {
       rawText: rawText,
       storeName: _extractStoreName(lines),
       totalAmount:
-          ReceiptAmountParser.extractAmount(rawText) ?? _extractTotalAmount(lines),
+          ReceiptAmountParser.extractAmount(rawText) ??
+          _extractTotalAmount(lines),
       date: _extractDate(rawText),
       summary: _extractSummary(lines),
       suggestedType: _classifyExpenseType(rawText),
@@ -272,24 +273,40 @@ class OCRService {
 
     const foodKeywords = [
       'quan',
+      'quán',
       'nha hang',
+      'nhà hàng',
       'an uong',
+      'ăn uống',
       'cafe',
+      'cà phê',
       'tra sua',
+      'trà sữa',
       'bun',
       'pho',
+      'phở',
       'com',
+      'cơm',
+      'bánh mì',
+      'banh mi',
+      'đồ ăn',
+      'do an',
       'food',
       'restaurant',
     ];
     const stayKeywords = [
       'hotel',
       'khach san',
+      'khách sạn',
       'resort',
       'homestay',
       'villa',
       'room',
       'booking',
+      'nhà nghỉ',
+      'nha nghi',
+      'lưu trú',
+      'luu tru',
     ];
     const transportKeywords = [
       'grab',
@@ -297,14 +314,46 @@ class OCRService {
       'xe',
       'bus',
       'tau',
+      'tàu',
       'flight',
       'airline',
       'xang',
+      'xăng',
       'tram thu phi',
+      'trạm thu phí',
+      'vé xe',
+      've xe',
+      'bến xe',
+      'ben xe',
+      'ga tàu',
+      'ga tau',
       'transport',
     ];
-    const ticketKeywords = ['ve', 'ticket', 'entrance', 'tham quan'];
-    const shoppingKeywords = ['mart', 'shop', 'store', 'mua sam', 'sieu thi'];
+    const ticketKeywords = [
+      've',
+      'vé',
+      'ticket',
+      'entrance',
+      'tham quan',
+      'vào cổng',
+      'vao cong',
+      'xem phim',
+      'sự kiện',
+      'su kien',
+    ];
+    const shoppingKeywords = [
+      'mart',
+      'shop',
+      'store',
+      'mua sam',
+      'mua sắm',
+      'sieu thi',
+      'siêu thị',
+      'cửa hàng',
+      'cua hang',
+      'tiện lợi',
+      'tien loi',
+    ];
 
     if (_containsAny(normalized, stayKeywords)) {
       return 'Stay';
@@ -389,7 +438,7 @@ class OCRService {
   }
 
   bool _containsAlphabet(String value) {
-    return RegExp(r'[A-Za-z]').hasMatch(value);
+    return RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(value);
   }
 
   bool _isLikelyNoiseLine(String line) {
@@ -401,98 +450,148 @@ class OCRService {
     if (compact.length >= 10 && RegExp(r'^[^A-Za-z0-9]+$').hasMatch(compact)) {
       return true;
     }
+    if (compact.length >= 10 &&
+        RegExp(r'^[^A-Za-zÀ-ỹ0-9]+$').hasMatch(compact)) {
+      return true;
+    }
     return false;
   }
 
   static const List<String> _storeKeywords = [
     'shop',
     'cua hang',
+    'cửa hàng',
     'nha hang',
+    'nhà hàng',
     'doanh nghiep',
+    'doanh nghiệp',
     'cong ty',
+    'công ty',
     'hotel',
     'quan',
+    'quán',
+    'siêu thị',
+    'sieu thi',
+    'trung tâm',
+    'trung tam',
   ];
 
   static const List<String> _metadataKeywords = [
     'ma so thue',
+    'mã số thuế',
     'tax code',
     'serial',
     'ky hieu',
+    'ký hiệu',
     'so no',
+    'số no',
     'invoice no',
     'so tai khoan',
+    'số tài khoản',
     'account',
     'dien thoai',
+    'điện thoại',
     'mst',
   ];
 
   static const List<String> _totalKeywordsStrong = [
     'tong tien thanh toan',
+    'tổng tiền thanh toán',
     'total payment',
     'tong cong',
+    'tổng cộng',
     'grand total',
     'can thanh toan',
+    'cần thanh toán',
     'tong tien',
+    'tổng tiền',
   ];
 
   static const List<String> _totalKeywordsWeak = [
     'thanh tien',
+    'thành tiền',
     'total',
     'cong',
+    'cộng',
     'amount',
     'payment',
   ];
 
   static const List<String> _summaryExcludeKeywords = [
     'hoa don',
+    'hóa đơn',
     'vat invoice',
     'ma so thue',
+    'mã số thuế',
     'tax code',
     'serial',
     'ky hieu',
+    'ký hiệu',
     'ngan hang',
+    'ngân hàng',
     'tai khoan',
+    'tài khoản',
     'customer signature',
     'seller signature',
     'tracuuhoadon',
     'tong tien thanh toan',
+    'tổng tiền thanh toán',
   ];
 
   static const List<String> _itemHeaderKeywords = [
     'ten hang hoa',
+    'tên hàng hóa',
     'hang hoa, dich vu',
+    'hàng hóa, dịch vụ',
     'san pham',
+    'sản phẩm',
     'description',
     'ten hang',
+    'tên hàng',
     'dich vu',
+    'dịch vụ',
   ];
 
   static const List<String> _itemStopKeywords = [
     'tong tien truoc thue',
+    'tổng tiền trước thuế',
     'tong tien thue',
+    'tổng tiền thuế',
     'tong tien thanh toan',
+    'tổng tiền thanh toán',
     'total payment',
     'amount in words',
     'so tien viet bang chu',
+    'số tiền viết bằng chữ',
     'nguoi mua hang',
+    'người mua hàng',
     'nguoi ban hang',
+    'người bán hàng',
   ];
 
   static const List<String> _itemExcludeKeywords = [
     'khach hang',
+    'khách hàng',
     'customer',
     'nguoi ban',
+    'người bán',
     'address',
     'dia chi',
+    'địa chỉ',
     'dien thoai',
+    'điện thoại',
     'tax code',
     'ma so thue',
+    'mã số thuế',
     'hinh thuc thanh toan',
+    'hình thức thanh toán',
     'payment method',
     'ngan hang',
+    'ngân hàng',
     'account',
     'cong ty',
+    'công ty',
     'doanh nghiep',
+    'doanh nghiệp',
   ];
 }

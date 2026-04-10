@@ -7,6 +7,7 @@ class ExpenseItem {
     required this.type,
     required this.date,
     this.note,
+    this.updatedAtMs,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class ExpenseItem {
   final String type;
   final DateTime date;
   final String? note;
+  final int? updatedAtMs;
 
   ExpenseItem copyWith({
     String? title,
@@ -23,6 +25,7 @@ class ExpenseItem {
     String? type,
     DateTime? date,
     String? note,
+    int? updatedAtMs,
   }) {
     return ExpenseItem(
       id: id,
@@ -32,6 +35,7 @@ class ExpenseItem {
       type: type ?? this.type,
       date: date ?? this.date,
       note: note ?? this.note,
+      updatedAtMs: updatedAtMs ?? this.updatedAtMs,
     );
   }
 
@@ -44,6 +48,7 @@ class ExpenseItem {
       'type': type,
       'date': date.toIso8601String(),
       'note': note,
+      'updatedAtMs': updatedAtMs,
     };
   }
 
@@ -56,6 +61,17 @@ class ExpenseItem {
       type: map['type'] as String,
       date: DateTime.parse(map['date'] as String),
       note: map['note'] as String?,
+      updatedAtMs: _asInt(map['updatedAtMs']),
     );
   }
+}
+
+int? _asInt(dynamic value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse((value ?? '').toString());
 }

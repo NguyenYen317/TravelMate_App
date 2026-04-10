@@ -60,6 +60,7 @@ class ExpenseProvider extends ChangeNotifier {
     final box = await Hive.openBox<dynamic>(_boxName);
     final rawExpenses =
         box.get(storageKey, defaultValue: <dynamic>[]) as List<dynamic>;
+    final localUpdatedAt = _readLocalUpdatedAt(box, storageKey);
 
     var localExpenses = rawExpenses
         .map((item) => ExpenseItem.fromMap(item as Map<dynamic, dynamic>))
@@ -89,16 +90,19 @@ class ExpenseProvider extends ChangeNotifier {
             expenses: _expensesToRaw(localExpenses),
           );
         } else if (localHasData && cloudHasData) {
-          final localUpdatedAt = _readLocalUpdatedAt(box, storageKey);
-          if (cloudPayload.updatedAtMs >= localUpdatedAt) {
-            localExpenses = cloudExpenses;
-            await _saveLocalOnly(_expensesToRaw(localExpenses));
-          } else {
-            await SyncService.instance.saveExpenses(
-              userId: userId,
-              expenses: _expensesToRaw(localExpenses),
-            );
-          }
+          localExpenses = _mergeExpenses(
+            localExpenses: localExpenses,
+            cloudExpenses: cloudExpenses,
+            localUpdatedAtMs: localUpdatedAt,
+            cloudUpdatedAtMs: cloudPayload.updatedAtMs,
+          );
+
+          final mergedRaw = _expensesToRaw(localExpenses);
+          await _saveLocalOnly(mergedRaw);
+          await SyncService.instance.saveExpenses(
+            userId: userId,
+            expenses: mergedRaw,
+          );
         }
       }
     }
@@ -181,7 +185,9 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   double totalByTrip(String tripId) {
-    return expensesByTrip(tripId).fold<double>(0, (sum, item) => sum + item.amount);
+    return expensesByTrip(
+      tripId,
+    ).fold<double>(0, (sum, item) => sum + item.amount);
   }
 
   Future<void> addExpense({
@@ -200,6 +206,7 @@ class ExpenseProvider extends ChangeNotifier {
       type: type,
       date: date,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
+      updatedAtMs: _nowMs(),
     );
 
     _allExpenses.add(created);
@@ -228,6 +235,7 @@ class ExpenseProvider extends ChangeNotifier {
       type: type,
       date: date,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
+      updatedAtMs: _nowMs(),
     );
     _allExpenses[index] = updated;
     await _persist();
@@ -304,6 +312,7 @@ class ExpenseProvider extends ChangeNotifier {
           type: type,
           date: date,
           note: 'Chi phí gợi ý tự động',
+          updatedAtMs: _nowMs(),
         ),
       );
     }
@@ -327,4 +336,67 @@ class ExpenseProvider extends ChangeNotifier {
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
+
+  List<ExpenseItem> _mergeExpenses({
+    required List<ExpenseItem> localExpenses,
+    required List<ExpenseItem> cloudExpenses,
+    required int localUpdatedAtMs,
+    required int cloudUpdatedAtMs,
+  }) {
+    final byId = <String, ExpenseItem>{};
+
+    for (final expense in localExpenses) {
+      byId[expense.id] = expense;
+    }
+
+    for (final cloudExpense in cloudExpenses) {
+      final localExpense = byId[cloudExpense.id];
+      if (localExpense == null) {
+        byId[cloudExpense.id] = cloudExpense;
+        continue;
+      }
+
+      byId[cloudExpense.id] = _pickNewerExpense(
+        localExpense: localExpense,
+        cloudExpense: cloudExpense,
+        localUpdatedAtMs: localUpdatedAtMs,
+        cloudUpdatedAtMs: cloudUpdatedAtMs,
+      );
+    }
+
+    final merged = byId.values.toList();
+    merged.sort((a, b) {
+      final aUpdated = a.updatedAtMs ?? 0;
+      final bUpdated = b.updatedAtMs ?? 0;
+      if (aUpdated != bUpdated) {
+        return bUpdated.compareTo(aUpdated);
+      }
+      return b.date.compareTo(a.date);
+    });
+    return merged;
+  }
+
+  ExpenseItem _pickNewerExpense({
+    required ExpenseItem localExpense,
+    required ExpenseItem cloudExpense,
+    required int localUpdatedAtMs,
+    required int cloudUpdatedAtMs,
+  }) {
+    final localItemUpdatedAt = localExpense.updatedAtMs ?? 0;
+    final cloudItemUpdatedAt = cloudExpense.updatedAtMs ?? 0;
+
+    if (cloudItemUpdatedAt > localItemUpdatedAt) {
+      return cloudExpense;
+    }
+    if (localItemUpdatedAt > cloudItemUpdatedAt) {
+      return localExpense;
+    }
+
+    if (cloudUpdatedAtMs >= localUpdatedAtMs) {
+      return cloudExpense;
+    }
+    return localExpense;
+  }
+
+  int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 }

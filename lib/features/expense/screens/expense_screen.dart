@@ -46,8 +46,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   final TextEditingController _noteCtrl = TextEditingController();
   final ReceiptProcessingService _receiptService = ReceiptProcessingService();
 
-  final Set<String> _seededTripIds = <String>{};
-
   String _type = 'Food';
   DateTime? _expenseDate;
   bool _isScanning = false;
@@ -80,17 +78,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           );
         }
 
-        if (!_seededTripIds.contains(trip.id)) {
-          _seededTripIds.add(trip.id);
-          Future.microtask(() {
-            expenseProvider.seedRandomExpensesIfEmpty(
-              tripId: trip.id,
-              startDate: trip.startDate,
-              endDate: trip.endDate,
-            );
-          });
-        }
-
         final expenses = expenseProvider.filteredExpensesByTrip(trip.id);
         return Scaffold(
           appBar: AppBar(title: Text('Chi phí - ${trip.title}')),
@@ -112,18 +99,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   Widget _buildCategoryPieChartCard(ExpenseProvider provider, Trip trip) {
-    final allTripExpenses = provider.expensesByTrip(trip.id);
-    if (allTripExpenses.isEmpty) {
+    final scopedExpenses = provider.filteredExpensesByTrip(trip.id);
+    if (scopedExpenses.isEmpty) {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(14),
-          child: Text('Chưa có dữ liệu để thống kê biểu đồ danh mục.'),
+          child: Text(
+            'Chưa có dữ liệu để thống kê biểu đồ danh mục theo bộ lọc hiện tại.',
+          ),
         ),
       );
     }
 
     final amountByType = <String, double>{};
-    for (final expense in allTripExpenses) {
+    for (final expense in scopedExpenses) {
       final type = expense.type.trim().isEmpty ? 'Other' : expense.type;
       amountByType[type] = (amountByType[type] ?? 0) + expense.amount;
     }
@@ -387,38 +376,51 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            FilledButton(
-              onPressed: () async {
-                final title = _titleCtrl.text.trim();
-                final amount = _parseAmount(_amountCtrl.text);
+            Row(
+              children: [
+                OutlinedButton(
+                  onPressed: () {
+                    _resetAddExpenseForm();
+                    _showSnack(
+                      context,
+                      'Đã hủy và xóa toàn bộ nội dung đang nhập.',
+                    );
+                  },
+                  child: const Text('Hủy'),
+                ),
+                const SizedBox(width: 10),
+                FilledButton(
+                  onPressed: () async {
+                    final title = _titleCtrl.text.trim();
+                    final amount = _parseAmount(_amountCtrl.text);
 
-                if (title.isEmpty || amount == null || amount <= 0) {
-                  _showSnack(context, 'Nhập đúng nội dung và số tiền > 0.');
-                  return;
-                }
+                    if (title.isEmpty || amount == null || amount <= 0) {
+                      _showSnack(context, 'Nhập đúng nội dung và số tiền > 0.');
+                      return;
+                    }
 
-                await provider.addExpense(
-                  tripId: trip.id,
-                  title: title,
-                  amount: amount,
-                  type: _type,
-                  date: _clampDate(effectiveDate, trip.startDate, trip.endDate),
-                  note: _noteCtrl.text,
-                );
+                    await provider.addExpense(
+                      tripId: trip.id,
+                      title: title,
+                      amount: amount,
+                      type: _type,
+                      date: _clampDate(
+                        effectiveDate,
+                        trip.startDate,
+                        trip.endDate,
+                      ),
+                      note: _noteCtrl.text,
+                    );
 
-                _titleCtrl.clear();
-                _amountCtrl.clear();
-                _noteCtrl.clear();
-                setState(() {
-                  _expenseDate = null;
-                  _type = 'Food';
-                });
-                _showSnack(
-                  context,
-                  'Đã lưu chi phí và cộng vào tổng chi phí chuyến đi.',
-                );
-              },
-              child: const Text('Lưu'),
+                    _resetAddExpenseForm();
+                    _showSnack(
+                      context,
+                      'Đã lưu chi phí và cộng vào tổng chi phí chuyến đi.',
+                    );
+                  },
+                  child: const Text('Lưu'),
+                ),
+              ],
             ),
           ],
         ),
@@ -426,10 +428,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget _buildReceiptScanActions(
-    BuildContext context,
-    Trip trip,
-  ) {
+  Widget _buildReceiptScanActions(BuildContext context, Trip trip) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -437,22 +436,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         OutlinedButton.icon(
           onPressed: _isScanning
               ? null
-              : () => _scanReceiptFromSource(
-                  context,
-                  trip,
-                  ImageSource.camera,
-                ),
+              : () => _scanReceiptFromSource(context, trip, ImageSource.camera),
           icon: const Icon(Icons.photo_camera_outlined),
           label: const Text('Chụp hóa đơn'),
         ),
         OutlinedButton.icon(
           onPressed: _isScanning
               ? null
-              : () => _scanReceiptFromSource(
-                  context,
-                  trip,
-                  ImageSource.gallery,
-                ),
+              : () =>
+                    _scanReceiptFromSource(context, trip, ImageSource.gallery),
           icon: const Icon(Icons.photo_library_outlined),
           label: const Text('Chọn từ thư viện'),
         ),
@@ -605,6 +597,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     return _clampDate(base, trip.startDate, trip.endDate);
   }
 
+  void _resetAddExpenseForm() {
+    _titleCtrl.clear();
+    _amountCtrl.clear();
+    _noteCtrl.clear();
+    setState(() {
+      _expenseDate = null;
+      _type = 'Food';
+    });
+  }
+
   Future<void> _scanReceiptFromSource(
     BuildContext context,
     Trip trip,
@@ -620,7 +622,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     });
 
     try {
-      final recognized = await _receiptService.scanReceiptByPath(pickedImage.path);
+      final recognized = await _receiptService.scanReceiptByPath(
+        pickedImage.path,
+      );
       final cloudUrl = await _receiptService.uploadToCloudinary(pickedImage);
 
       final result = ReceiptScanResult(
@@ -671,7 +675,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     }
 
     if (_titleCtrl.text.trim().isEmpty) {
-      _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hóa đơn').trim();
+      _titleCtrl.text = (result.storeName ?? result.summary ?? 'Hóa đơn')
+          .trim();
     }
 
     final noteParts = <String>[];
@@ -724,7 +729,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     Trip trip,
   ) async {
     final titleCtrl = TextEditingController(text: item.title);
-    final amountCtrl = TextEditingController(text: item.amount.toStringAsFixed(0));
+    final amountCtrl = TextEditingController(
+      text: item.amount.toStringAsFixed(0),
+    );
     final noteCtrl = TextEditingController(text: item.note ?? '');
     String currentType = item.type;
     DateTime currentDate = item.date;
@@ -817,7 +824,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   onPressed: () async {
                     final title = titleCtrl.text.trim();
                     final parsedAmount = _parseAmount(amountCtrl.text);
-                    if (title.isEmpty || parsedAmount == null || parsedAmount <= 0) {
+                    if (title.isEmpty ||
+                        parsedAmount == null ||
+                        parsedAmount <= 0) {
                       _showSnack(context, 'Nhập đúng nội dung và số tiền > 0.');
                       return;
                     }
@@ -828,7 +837,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         title: title,
                         amount: parsedAmount,
                         type: currentType,
-                        date: _clampDate(currentDate, trip.startDate, trip.endDate),
+                        date: _clampDate(
+                          currentDate,
+                          trip.startDate,
+                          trip.endDate,
+                        ),
                         note: noteCtrl.text,
                       );
                       if (dialogContext.mounted) {
@@ -863,7 +876,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.maybeOf(context) ??
+      final messenger =
+          ScaffoldMessenger.maybeOf(context) ??
           ScaffoldMessenger.maybeOf(this.context);
       messenger?.showSnackBar(SnackBar(content: Text(message)));
     });
